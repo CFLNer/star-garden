@@ -16,18 +16,28 @@
   <body>
     <div class="app-shell">
       <header class="topbar">
-        <button class="brand-button" type="button" data-view="kid" aria-label="Show kid view">
+        <button class="brand-button" type="button" data-view="kid" aria-label="Show kid view" data-i18n-aria-label="showKidView">
           <span class="brand-mark" aria-hidden="true">★</span>
           <span>
             <span class="brand-name">Star Garden</span>
-            <span class="brand-subtitle">Growing one star at a time</span>
+            <span class="brand-subtitle" data-i18n="brandSubtitle">Growing one star at a time</span>
           </span>
         </button>
 
-        <nav class="view-tabs" aria-label="App views">
-          <button class="tab-button is-active" type="button" data-view="kid">Kid</button>
-          <button class="tab-button" type="button" data-view="parent">Parent</button>
-        </nav>
+        <div class="topbar-controls">
+          <nav class="view-tabs" aria-label="App views" data-i18n-aria-label="appViews">
+            <button class="tab-button is-active" type="button" data-view="kid" data-i18n="kidTab">Kid</button>
+            <button class="tab-button" type="button" data-view="parent" data-i18n="parentTab">Parent</button>
+          </nav>
+
+          <label class="language-control" for="languageSelect">
+            <span class="sr-only" data-i18n="languageLabel">Display language</span>
+            <select id="languageSelect" name="language" aria-label="Display language" data-i18n-aria-label="languageLabel">
+              <option value="en">EN</option>
+              <option value="zh-CN">简中</option>
+            </select>
+          </label>
+        </div>
       </header>
 
       <div id="appToast" class="app-toast" role="status" aria-live="polite"></div>
@@ -37,12 +47,12 @@
           <div class="kid-hero">
             <div class="animal-card" aria-live="polite">
               <div id="kidAvatar" class="animal-avatar" aria-hidden="true">🦁</div>
-              <p class="kid-greeting">Hello, <span id="kidName">Little Star</span>!</p>
-              <h1 id="kidTitle"><span id="kidStars">10</span> stars</h1>
+              <p class="kid-greeting"><span data-i18n="helloPrefix">Hello</span>, <span id="kidName">Little Star</span>!</p>
+              <h1 id="kidTitle"><span id="kidStars">10</span> <span data-i18n="stars">stars</span></h1>
               <p id="rewardLine" class="reward-line">Working toward a reward</p>
             </div>
 
-            <div class="progress-panel" aria-label="Reward progress">
+            <div class="progress-panel" aria-label="Reward progress" data-i18n-aria-label="rewardProgress">
               <div class="progress-labels">
                 <span id="progressText">0 of 5 stars</span>
                 <span id="progressPercent">0%</span>
@@ -57,25 +67,25 @@
           <div id="celebration" class="celebration" role="status" aria-live="polite"></div>
 
           <section class="kid-rewards" aria-labelledby="kidRewardsTitle">
-            <h2 id="kidRewardsTitle">Rewards</h2>
+            <h2 id="kidRewardsTitle" data-i18n="rewardsTitle">Rewards</h2>
             <div id="kidRewardList" class="kid-reward-list"></div>
           </section>
 
           <section class="kid-summary" aria-labelledby="todayTitle">
-            <h2 id="todayTitle">Today's Stars</h2>
+            <h2 id="todayTitle" data-i18n="todayStarsTitle">Today's Stars</h2>
             <div id="kidTodayList" class="kid-today-list"></div>
           </section>
         </section>
 
         <section id="parentView" class="view" aria-labelledby="parentTitle">
           <div id="pinGate" class="pin-card">
-            <h1 id="parentTitle">Parent Tools</h1>
-            <p>This PIN is a simple child gate, not real security.</p>
+            <h1 id="parentTitle" data-i18n="parentToolsTitle">Parent Tools</h1>
+            <p data-i18n="pinHelp">This PIN is a simple child gate, not real security.</p>
             <form id="pinForm" class="pin-form">
-              <label for="pinInput">Parent PIN</label>
+              <label for="pinInput" data-i18n="parentPinLabel">Parent PIN</label>
               <div class="inline-form">
-                <input id="pinInput" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="PIN">
-                <button class="primary-button" type="submit">Unlock</button>
+                <input id="pinInput" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="PIN" data-i18n-placeholder="pinPlaceholder">
+                <button class="primary-button" type="submit" data-i18n="unlockButton">Unlock</button>
               </div>
               <p id="pinError" class="form-error" role="alert"></p>
             </form>
@@ -84,17 +94,17 @@
           <div id="parentTools" class="parent-tools" hidden>
             <section class="panel compact-panel" aria-labelledby="profileTitle">
               <div class="panel-heading">
-                <h2 id="profileTitle">Profile</h2>
-                <button id="lockParentButton" class="ghost-button" type="button">Lock</button>
+                <h2 id="profileTitle" data-i18n="profileTitle">Profile</h2>
+                <button id="lockParentButton" class="ghost-button" type="button" data-i18n="lockButton">Lock</button>
               </div>
               <form id="profileForm" class="profile-form">
-                <label for="childNameInput">Child name</label>
+                <label for="childNameInput" data-i18n="childNameLabel">Child name</label>
                 <div class="inline-form">
                   <input id="childNameInput" name="childName" type="text" maxlength="24" autocomplete="off">
-                  <button class="secondary-button" type="submit">Save</button>
+                  <button class="secondary-button" type="submit" data-i18n="saveButton">Save</button>
                 </div>
                 <fieldset class="avatar-fieldset">
-                  <legend>Avatar</legend>
+                  <legend data-i18n="avatarLegend">Avatar</legend>
                   <div id="avatarChoices" class="avatar-choices"></div>
                 </fieldset>
               </form>
@@ -102,82 +112,82 @@
 
             <section class="panel" aria-labelledby="quickActionsTitle">
               <div class="panel-heading">
-                <h2 id="quickActionsTitle">Quick Actions</h2>
+                <h2 id="quickActionsTitle" data-i18n="quickActionsTitle">Quick Actions</h2>
                 <span id="parentBalance" class="balance-pill">10 stars</span>
               </div>
               <div class="action-groups">
                 <div>
-                  <h3>Earn Stars</h3>
+                  <h3 data-i18n="earnStarsTitle">Earn Stars</h3>
                   <div id="earningActions" class="action-grid"></div>
                 </div>
                 <div>
-                  <h3>Gentle Corrections</h3>
+                  <h3 data-i18n="correctionsTitle">Gentle Corrections</h3>
                   <div id="correctionActions" class="action-grid"></div>
                 </div>
               </div>
             </section>
 
             <section class="panel" aria-labelledby="customEventTitle">
-              <h2 id="customEventTitle">Custom Event</h2>
+              <h2 id="customEventTitle" data-i18n="customEventTitle">Custom Event</h2>
               <form id="customEventForm" class="stacked-form">
-                <label for="eventLabelInput">Label</label>
-                <input id="eventLabelInput" name="label" type="text" maxlength="40" placeholder="Shared nicely">
+                <label for="eventLabelInput" data-i18n="eventLabelLabel">Label</label>
+                <input id="eventLabelInput" name="label" type="text" maxlength="40" placeholder="Shared nicely" data-i18n-placeholder="eventLabelPlaceholder">
 
                 <div class="form-row">
-                  <label for="eventStarsInput">Star change</label>
+                  <label for="eventStarsInput" data-i18n="starChangeLabel">Star change</label>
                   <input id="eventStarsInput" name="stars" type="number" step="1" min="-20" max="20" value="1">
                 </div>
 
-                <label for="eventCategoryInput">Category</label>
+                <label for="eventCategoryInput" data-i18n="categoryLabel">Category</label>
                 <select id="eventCategoryInput" name="category">
-                  <option value="earning">Earn stars</option>
-                  <option value="correction">Gentle correction</option>
-                  <option value="adjustment">Balance adjustment</option>
+                  <option value="earning" data-i18n="categoryEarning">Earn stars</option>
+                  <option value="correction" data-i18n="categoryCorrection">Gentle correction</option>
+                  <option value="adjustment" data-i18n="categoryAdjustment">Balance adjustment</option>
                 </select>
 
-                <label for="eventNoteInput">Private parent note</label>
-                <textarea id="eventNoteInput" name="note" rows="3" maxlength="160" placeholder="Optional"></textarea>
+                <label for="eventNoteInput" data-i18n="privateNoteLabel">Private parent note</label>
+                <textarea id="eventNoteInput" name="note" rows="3" maxlength="160" placeholder="Optional" data-i18n-placeholder="optionalPlaceholder"></textarea>
 
                 <label class="checkbox-line">
                   <input id="eventVisibleInput" name="visible" type="checkbox" checked>
-                  <span>Show this in kid view</span>
+                  <span data-i18n="showInKidView">Show this in kid view</span>
                 </label>
 
-                <button class="primary-button full-button" type="submit">Add Event</button>
+                <button class="primary-button full-button" type="submit" data-i18n="addEventButton">Add Event</button>
               </form>
             </section>
 
             <section class="panel" aria-labelledby="rewardsTitle">
               <div class="panel-heading">
-                <h2 id="rewardsTitle">Rewards</h2>
+                <h2 id="rewardsTitle" data-i18n="rewardsTitle">Rewards</h2>
                 <span id="activeRewardBadge" class="balance-pill">Active reward</span>
               </div>
 
               <form id="rewardForm" class="reward-form">
                 <input id="rewardIdInput" name="rewardId" type="hidden">
-                <label for="rewardLabelInput">Reward</label>
-                <input id="rewardLabelInput" name="label" type="text" maxlength="40" placeholder="Extra playtime">
+                <label for="rewardLabelInput" data-i18n="rewardLabel">Reward</label>
+                <input id="rewardLabelInput" name="label" type="text" maxlength="40" placeholder="Extra playtime" data-i18n-placeholder="rewardPlaceholder">
 
                 <div class="form-pair">
                   <div>
-                    <label for="rewardCostInput">Stars</label>
+                    <label for="rewardCostInput" data-i18n="starsLabel">Stars</label>
                     <input id="rewardCostInput" name="cost" type="number" min="1" max="200" step="1" value="5">
                   </div>
                   <div>
-                    <label for="rewardIconInput">Icon</label>
+                    <label for="rewardIconInput" data-i18n="iconLabel">Icon</label>
                     <select id="rewardIconInput" name="icon">
-                      <option value="🌙">Moon</option>
-                      <option value="🛝">Playground</option>
-                      <option value="🍓">Snack</option>
-                      <option value="🧸">Toy</option>
-                      <option value="🎨">Art</option>
-                      <option value="⭐">Star</option>
+                      <option value="🌙" data-i18n="iconMoon">Moon</option>
+                      <option value="🛝" data-i18n="iconPlayground">Playground</option>
+                      <option value="🍓" data-i18n="iconSnack">Snack</option>
+                      <option value="🧸" data-i18n="iconToy">Toy</option>
+                      <option value="🎨" data-i18n="iconArt">Art</option>
+                      <option value="⭐" data-i18n="iconStar">Star</option>
                     </select>
                   </div>
                 </div>
 
-                <button class="secondary-button full-button" type="submit">Save Reward</button>
-                <button id="cancelRewardEditButton" class="ghost-button full-button" type="button" hidden>Cancel Edit</button>
+                <button class="secondary-button full-button" type="submit" data-i18n="saveRewardButton">Save Reward</button>
+                <button id="cancelRewardEditButton" class="ghost-button full-button" type="button" hidden data-i18n="cancelEditButton">Cancel Edit</button>
               </form>
 
               <div id="rewardList" class="reward-list"></div>
@@ -185,8 +195,8 @@
 
             <section class="panel" aria-labelledby="historyTitle">
               <div class="panel-heading">
-                <h2 id="historyTitle">History</h2>
-                <button id="resetDataButton" class="danger-button" type="button">Reset</button>
+                <h2 id="historyTitle" data-i18n="historyTitle">History</h2>
+                <button id="resetDataButton" class="danger-button" type="button" data-i18n="resetButton">Reset</button>
               </div>
               <div id="historyList" class="history-list"></div>
             </section>
