@@ -1,0 +1,17 @@
+{
+  "name": "Star Garden",
+  "short_name": "Star Garden",
+  "description": "A kid-friendly star tracker for family habits and rewards.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#d8f4ff",
+  "theme_color": "#7ac36a",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

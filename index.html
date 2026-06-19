@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#7ac36a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Star Garden">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Star Garden</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <button class="brand-button" type="button" data-view="kid" aria-label="Show kid view">
+          <span class="brand-mark" aria-hidden="true">★</span>
+          <span>
+            <span class="brand-name">Star Garden</span>
+            <span class="brand-subtitle">Growing one star at a time</span>
+          </span>
+        </button>
+
+        <nav class="view-tabs" aria-label="App views">
+          <button class="tab-button is-active" type="button" data-view="kid">Kid</button>
+          <button class="tab-button" type="button" data-view="parent">Parent</button>
+        </nav>
+      </header>
+
+      <div id="appToast" class="app-toast" role="status" aria-live="polite"></div>
+
+      <main>
+        <section id="kidView" class="view is-active" aria-labelledby="kidTitle">
+          <div class="kid-hero">
+            <div class="animal-card" aria-live="polite">
+              <div id="kidAvatar" class="animal-avatar" aria-hidden="true">🦁</div>
+              <p class="kid-greeting">Hello, <span id="kidName">Little Star</span>!</p>
+              <h1 id="kidTitle"><span id="kidStars">10</span> stars</h1>
+              <p id="rewardLine" class="reward-line">Working toward a reward</p>
+            </div>
+
+            <div class="progress-panel" aria-label="Reward progress">
+              <div class="progress-labels">
+                <span id="progressText">0 of 5 stars</span>
+                <span id="progressPercent">0%</span>
+              </div>
+              <div class="progress-track">
+                <div id="progressFill" class="progress-fill"></div>
+              </div>
+              <div id="gardenPlot" class="garden-plot" aria-hidden="true"></div>
+            </div>
+          </div>
+
+          <div id="celebration" class="celebration" role="status" aria-live="polite"></div>
+
+          <section class="kid-rewards" aria-labelledby="kidRewardsTitle">
+            <h2 id="kidRewardsTitle">Rewards</h2>
+            <div id="kidRewardList" class="kid-reward-list"></div>
+          </section>
+
+          <section class="kid-summary" aria-labelledby="todayTitle">
+            <h2 id="todayTitle">Today's Stars</h2>
+            <div id="kidTodayList" class="kid-today-list"></div>
+          </section>
+        </section>
+
+        <section id="parentView" class="view" aria-labelledby="parentTitle">
+          <div id="pinGate" class="pin-card">
+            <h1 id="parentTitle">Parent Tools</h1>
+            <p>This PIN is a simple child gate, not real security.</p>
+            <form id="pinForm" class="pin-form">
+              <label for="pinInput">Parent PIN</label>
+              <div class="inline-form">
+                <input id="pinInput" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="PIN">
+                <button class="primary-button" type="submit">Unlock</button>
+              </div>
+              <p id="pinError" class="form-error" role="alert"></p>
+            </form>
+          </div>
+
+          <div id="parentTools" class="parent-tools" hidden>
+            <section class="panel compact-panel" aria-labelledby="profileTitle">
+              <div class="panel-heading">
+                <h2 id="profileTitle">Profile</h2>
+                <button id="lockParentButton" class="ghost-button" type="button">Lock</button>
+              </div>
+              <form id="profileForm" class="profile-form">
+                <label for="childNameInput">Child name</label>
+                <div class="inline-form">
+                  <input id="childNameInput" name="childName" type="text" maxlength="24" autocomplete="off">
+                  <button class="secondary-button" type="submit">Save</button>
+                </div>
+                <fieldset class="avatar-fieldset">
+                  <legend>Avatar</legend>
+                  <div id="avatarChoices" class="avatar-choices"></div>
+                </fieldset>
+              </form>
+            </section>
+
+            <section class="panel" aria-labelledby="quickActionsTitle">
+              <div class="panel-heading">
+                <h2 id="quickActionsTitle">Quick Actions</h2>
+                <span id="parentBalance" class="balance-pill">10 stars</span>
+              </div>
+              <div class="action-groups">
+                <div>
+                  <h3>Earn Stars</h3>
+                  <div id="earningActions" class="action-grid"></div>
+                </div>
+                <div>
+                  <h3>Gentle Corrections</h3>
+                  <div id="correctionActions" class="action-grid"></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel" aria-labelledby="customEventTitle">
+              <h2 id="customEventTitle">Custom Event</h2>
+              <form id="customEventForm" class="stacked-form">
+                <label for="eventLabelInput">Label</label>
+                <input id="eventLabelInput" name="label" type="text" maxlength="40" placeholder="Shared nicely">
+
+                <div class="form-row">
+                  <label for="eventStarsInput">Star change</label>
+                  <input id="eventStarsInput" name="stars" type="number" step="1" min="-20" max="20" value="1">
+                </div>
+
+                <label for="eventCategoryInput">Category</label>
+                <select id="eventCategoryInput" name="category">
+                  <option value="earning">Earn stars</option>
+                  <option value="correction">Gentle correction</option>
+                  <option value="adjustment">Balance adjustment</option>
+                </select>
+
+                <label for="eventNoteInput">Private parent note</label>
+                <textarea id="eventNoteInput" name="note" rows="3" maxlength="160" placeholder="Optional"></textarea>
+
+                <label class="checkbox-line">
+                  <input id="eventVisibleInput" name="visible" type="checkbox" checked>
+                  <span>Show this in kid view</span>
+                </label>
+
+                <button class="primary-button full-button" type="submit">Add Event</button>
+              </form>
+            </section>
+
+            <section class="panel" aria-labelledby="rewardsTitle">
+              <div class="panel-heading">
+                <h2 id="rewardsTitle">Rewards</h2>
+                <span id="activeRewardBadge" class="balance-pill">Active reward</span>
+              </div>
+
+              <form id="rewardForm" class="reward-form">
+                <input id="rewardIdInput" name="rewardId" type="hidden">
+                <label for="rewardLabelInput">Reward</label>
+                <input id="rewardLabelInput" name="label" type="text" maxlength="40" placeholder="Extra playtime">
+
+                <div class="form-pair">
+                  <div>
+                    <label for="rewardCostInput">Stars</label>
+                    <input id="rewardCostInput" name="cost" type="number" min="1" max="200" step="1" value="5">
+                  </div>
+                  <div>
+                    <label for="rewardIconInput">Icon</label>
+                    <select id="rewardIconInput" name="icon">
+                      <option value="🌙">Moon</option>
+                      <option value="🛝">Playground</option>
+                      <option value="🍓">Snack</option>
+                      <option value="🧸">Toy</option>
+                      <option value="🎨">Art</option>
+                      <option value="⭐">Star</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button class="secondary-button full-button" type="submit">Save Reward</button>
+                <button id="cancelRewardEditButton" class="ghost-button full-button" type="button" hidden>Cancel Edit</button>
+              </form>
+
+              <div id="rewardList" class="reward-list"></div>
+            </section>
+
+            <section class="panel" aria-labelledby="historyTitle">
+              <div class="panel-heading">
+                <h2 id="historyTitle">History</h2>
+                <button id="resetDataButton" class="danger-button" type="button">Reset</button>
+              </div>
+              <div id="historyList" class="history-list"></div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

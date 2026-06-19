@@ -1,0 +1,921 @@
+:root {
+  --leaf: #3d8c5a;
+  --leaf-dark: #23623d;
+  --grass: #7ac36a;
+  --sky: #d8f4ff;
+  --sun: #ffd166;
+  --berry: #d85555;
+  --ink: #223126;
+  --muted: #65706a;
+  --panel: #ffffff;
+  --cream: #fff8df;
+  --line: #d9e4d8;
+  --shadow: 0 18px 45px rgba(34, 49, 38, 0.16);
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: linear-gradient(180deg, var(--sky) 0%, #f4fbec 52%, #fff7e3 100%);
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  color: var(--ink);
+  font-family: ui-rounded, "SF Pro Rounded", "Avenir Next", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  min-height: 44px;
+  border: 0;
+  cursor: pointer;
+}
+
+button:active,
+button.is-feedback {
+  transform: scale(0.98);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(61, 140, 90, 0.38);
+  outline-offset: 2px;
+}
+
+.app-shell {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: env(safe-area-inset-top) 14px 24px;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  background: linear-gradient(180deg, rgba(216, 244, 255, 0.96), rgba(216, 244, 255, 0.72));
+  backdrop-filter: blur(12px);
+}
+
+.app-toast {
+  position: sticky;
+  top: 72px;
+  z-index: 4;
+  max-height: 0;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--leaf);
+  color: #ffffff;
+  font-weight: 900;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 180ms ease, transform 180ms ease, max-height 180ms ease, padding 180ms ease, margin 180ms ease;
+}
+
+.app-toast.is-visible {
+  max-height: 70px;
+  margin: 0 auto 12px;
+  padding: 12px 14px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.app-toast.is-warning {
+  background: #a35a24;
+}
+
+.brand-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  color: var(--ink);
+  background: transparent;
+  text-align: left;
+}
+
+.brand-mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--sun);
+  color: #7a5011;
+  font-size: 24px;
+  box-shadow: 0 8px 22px rgba(146, 103, 29, 0.18);
+}
+
+.brand-name,
+.brand-subtitle {
+  display: block;
+}
+
+.brand-name {
+  font-size: 1.06rem;
+  font-weight: 800;
+}
+
+.brand-subtitle {
+  max-width: 180px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.view-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  min-width: 142px;
+  padding: 4px;
+  border: 1px solid rgba(61, 140, 90, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.tab-button {
+  min-height: 38px;
+  padding: 0 13px;
+  border-radius: 999px;
+  color: var(--leaf-dark);
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.tab-button.is-active {
+  background: var(--leaf);
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(61, 140, 90, 0.2);
+}
+
+.view {
+  display: none;
+}
+
+.view.is-active {
+  display: block;
+}
+
+.kid-hero {
+  display: grid;
+  gap: 14px;
+}
+
+.animal-card,
+.progress-panel,
+.kid-rewards,
+.kid-summary,
+.pin-card,
+.panel {
+  border: 1px solid rgba(61, 140, 90, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: var(--shadow);
+}
+
+.animal-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 320px;
+  padding: 24px 18px 22px;
+  text-align: center;
+}
+
+.animal-card::before {
+  position: absolute;
+  inset: auto -20px 0;
+  height: 104px;
+  content: "";
+  background:
+    radial-gradient(circle at 18% 100%, #5eb66a 0 34px, transparent 35px),
+    radial-gradient(circle at 44% 105%, #74c66f 0 42px, transparent 43px),
+    radial-gradient(circle at 72% 100%, #4f9f62 0 36px, transparent 37px),
+    linear-gradient(180deg, transparent 0 42px, #8fd36c 43px);
+  opacity: 0.92;
+}
+
+.animal-avatar {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: clamp(120px, 38vw, 190px);
+  height: clamp(120px, 38vw, 190px);
+  place-items: center;
+  margin: 0 auto 12px;
+  border: 8px solid #fff1bf;
+  border-radius: 50%;
+  background: #fff9db;
+  font-size: clamp(4.7rem, 18vw, 7rem);
+  box-shadow: inset 0 -12px 0 rgba(255, 209, 102, 0.22), 0 20px 35px rgba(61, 140, 90, 0.18);
+}
+
+.animal-avatar.has-photo {
+  overflow: hidden;
+  padding: 0;
+  background: #ffffff;
+  font-size: 0;
+}
+
+.animal-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.kid-greeting {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  color: var(--leaf-dark);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.animal-card h1 {
+  position: relative;
+  z-index: 1;
+  margin: 4px 0 4px;
+  font-size: clamp(3rem, 16vw, 5.8rem);
+  line-height: 0.98;
+}
+
+.reward-line {
+  position: relative;
+  z-index: 1;
+  max-width: 420px;
+  margin: 0 auto;
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.progress-panel,
+.kid-rewards,
+.kid-summary,
+.pin-card,
+.panel {
+  padding: 16px;
+}
+
+.progress-labels,
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.progress-labels {
+  color: var(--leaf-dark);
+  font-weight: 900;
+}
+
+.progress-track {
+  height: 18px;
+  margin: 10px 0 14px;
+  overflow: hidden;
+  border: 2px solid #d0e7c6;
+  border-radius: 999px;
+  background: #edf8e7;
+}
+
+.progress-fill {
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--grass), var(--sun));
+  transition: width 240ms ease;
+}
+
+.garden-plot {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.garden-cell {
+  display: grid;
+  min-height: 40px;
+  place-items: center;
+  border-radius: 8px;
+  background: #edf6e8;
+  font-size: 1.35rem;
+}
+
+.garden-cell.is-grown {
+  background: #fff2b8;
+  transform: translateY(-1px);
+}
+
+.celebration {
+  min-height: 0;
+  margin: 12px 0;
+  overflow: hidden;
+  border-radius: 8px;
+  color: var(--leaf-dark);
+  font-weight: 900;
+  text-align: center;
+}
+
+.celebration.is-visible {
+  min-height: 52px;
+  padding: 14px;
+  border: 2px solid rgba(255, 209, 102, 0.75);
+  background: #fff7cf;
+  animation: pop 420ms ease both;
+}
+
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.kid-rewards h2,
+.kid-summary h2,
+.panel h2,
+.pin-card h1 {
+  margin: 0 0 12px;
+  font-size: 1.25rem;
+}
+
+.kid-reward-list,
+.kid-today-list,
+.history-list,
+.reward-list {
+  display: grid;
+  gap: 10px;
+}
+
+.kid-reward-card,
+.today-item,
+.history-item,
+.reward-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffef7;
+}
+
+.kid-reward-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 12px;
+}
+
+.kid-reward-card.is-ready {
+  border-color: rgba(61, 140, 90, 0.42);
+  background: #f5ffef;
+}
+
+.kid-reward-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 8px;
+  background: #fff1bc;
+  font-size: 1.7rem;
+}
+
+.kid-reward-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.kid-reward-copy strong {
+  overflow-wrap: anywhere;
+}
+
+.kid-reward-copy span {
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.kid-redeem-button {
+  min-width: 96px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--leaf);
+  color: #ffffff;
+  font-weight: 900;
+}
+
+.kid-redeem-button:disabled {
+  cursor: not-allowed;
+  background: #ece6d8;
+  color: #766f64;
+}
+
+.today-item {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 10px 12px;
+  font-weight: 800;
+}
+
+.today-item.is-negative {
+  background: #fff9f1;
+}
+
+.today-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #fff1bc;
+}
+
+.today-reason {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.today-delta {
+  min-width: 72px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: #eaf7e5;
+  color: var(--leaf-dark);
+  font-size: 0.86rem;
+  font-weight: 900;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.today-delta.is-negative {
+  background: #fff0ea;
+  color: #9a3939;
+}
+
+.pin-card {
+  margin-top: 24px;
+}
+
+.pin-card p {
+  margin: 0 0 14px;
+  color: var(--muted);
+}
+
+label,
+legend {
+  color: var(--leaf-dark);
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffef8;
+  color: var(--ink);
+  padding: 10px 12px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.inline-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.pin-form,
+.profile-form,
+.stacked-form,
+.reward-form {
+  display: grid;
+  gap: 10px;
+}
+
+.form-error {
+  min-height: 20px;
+  margin: 0;
+  color: #a73535;
+  font-weight: 800;
+}
+
+.parent-tools {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 24px;
+}
+
+.compact-panel {
+  margin-top: 12px;
+}
+
+.primary-button,
+.secondary-button,
+.ghost-button,
+.danger-button,
+.action-button,
+.small-button {
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+.primary-button {
+  background: var(--leaf);
+  color: #ffffff;
+}
+
+.secondary-button {
+  border: 1px solid rgba(61, 140, 90, 0.26);
+  background: #eaf7e5;
+  color: var(--leaf-dark);
+}
+
+.ghost-button {
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--leaf-dark);
+}
+
+.danger-button {
+  border: 1px solid rgba(216, 85, 85, 0.28);
+  background: #fff1ef;
+  color: #9a3939;
+}
+
+.full-button {
+  width: 100%;
+}
+
+.balance-pill {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: #fff1bc;
+  color: #7a5011;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.action-groups {
+  display: grid;
+  gap: 16px;
+}
+
+.action-groups h3 {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-transform: uppercase;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(142px, 1fr));
+  gap: 10px;
+}
+
+.action-button {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 64px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: #fffef7;
+  color: var(--ink);
+  text-align: left;
+}
+
+.action-button strong,
+.reward-item strong,
+.history-item strong {
+  display: block;
+}
+
+.action-button span:last-child,
+.reward-meta,
+.history-meta {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.action-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: #f2faed;
+  font-size: 1.3rem;
+}
+
+.action-button.is-correction .action-icon {
+  background: #fff0ea;
+}
+
+.form-row,
+.form-pair {
+  display: grid;
+  gap: 10px;
+}
+
+.form-pair {
+  grid-template-columns: 1fr 1fr;
+}
+
+.checkbox-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  color: var(--ink);
+}
+
+.checkbox-line input {
+  width: 22px;
+  min-height: 22px;
+}
+
+.avatar-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.avatar-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.avatar-choice {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  justify-items: center;
+  overflow: hidden;
+  min-height: 78px;
+  padding: 8px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: #fff8df;
+  color: var(--ink);
+  font-size: 1.8rem;
+}
+
+.avatar-choice img {
+  display: block;
+  width: 58px;
+  height: 58px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.avatar-choice.is-photo {
+  grid-column: span 2;
+  grid-template-columns: 64px minmax(0, 1fr);
+  justify-items: start;
+  text-align: left;
+}
+
+.avatar-choice-emoji {
+  line-height: 1;
+}
+
+.avatar-choice-label {
+  color: var(--leaf-dark);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.avatar-choice.is-selected {
+  border-color: var(--leaf);
+  background: #eaf7e5;
+}
+
+.reward-list {
+  margin-top: 14px;
+}
+
+.reward-item {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.reward-main,
+.history-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reward-name {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.reward-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: #fff1bc;
+  font-size: 1.35rem;
+}
+
+.reward-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.small-button {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--leaf-dark);
+  font-size: 0.84rem;
+}
+
+.small-button.primary-small {
+  border-color: var(--leaf);
+  background: var(--leaf);
+  color: #ffffff;
+}
+
+.small-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
+.history-item {
+  padding: 12px;
+}
+
+.history-delta {
+  flex: 0 0 auto;
+  min-width: 54px;
+  padding: 7px 8px;
+  border-radius: 999px;
+  background: #eaf7e5;
+  color: var(--leaf-dark);
+  font-weight: 900;
+  text-align: center;
+}
+
+.history-delta.is-negative {
+  background: #fff0ea;
+  color: #9a3939;
+}
+
+.history-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.empty-state {
+  padding: 16px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--muted);
+  font-weight: 800;
+  text-align: center;
+}
+
+@media (min-width: 760px) {
+  .app-shell {
+    padding-inline: 22px;
+  }
+
+  .kid-hero {
+    grid-template-columns: 1.05fr 0.95fr;
+    align-items: stretch;
+  }
+
+  .progress-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .parent-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .panel:nth-of-type(3),
+  .panel:nth-of-type(4) {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 430px) {
+  .app-shell {
+    padding-inline: 10px;
+  }
+
+  .topbar {
+    gap: 8px;
+  }
+
+  .brand-subtitle {
+    display: none;
+  }
+
+  .view-tabs {
+    min-width: 124px;
+  }
+
+  .tab-button {
+    padding: 0 9px;
+  }
+
+  .inline-form,
+  .form-pair {
+    grid-template-columns: 1fr;
+  }
+
+  .reward-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .kid-reward-card {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .kid-redeem-button {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .avatar-choice.is-photo {
+    grid-column: span 1;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .today-item {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .today-delta {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
