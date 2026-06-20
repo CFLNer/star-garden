@@ -1,4 +1,4 @@
-const CACHE_NAME = "star-garden-v5";
+const CACHE_NAME = "star-garden-v6";
 const APP_FILES = [
   "./",
   "./index.html",
