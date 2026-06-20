@@ -1,4 +1,4 @@
-const CACHE_NAME = "star-garden-v6";
+const CACHE_NAME = "star-garden-v7";
 const APP_FILES = [
   "./",
   "./index.html",
@@ -10,7 +10,9 @@ const APP_FILES = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_FILES))
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(APP_FILES))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -20,7 +22,7 @@ self.addEventListener("activate", (event) => {
       cacheNames
         .filter((cacheName) => cacheName !== CACHE_NAME)
         .map((cacheName) => caches.delete(cacheName))
-    ))
+    )).then(() => self.clients.claim())
   );
 });
 
