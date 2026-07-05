@@ -487,6 +487,7 @@ const dom = {
   quickActionCategoryInput: document.querySelector("#quickActionCategoryInput"),
   quickActionVisibleInput: document.querySelector("#quickActionVisibleInput"),
   cancelQuickActionEditButton: document.querySelector("#cancelQuickActionEditButton"),
+  removeQuickActionButton: document.querySelector("#removeQuickActionButton"),
   customEventForm: document.querySelector("#customEventForm"),
   eventLabelInput: document.querySelector("#eventLabelInput"),
   eventStarsInput: document.querySelector("#eventStarsInput"),
@@ -1024,17 +1025,7 @@ function renderActionGroup(container, presets) {
     editButton.textContent = t("editButton");
     editButton.addEventListener("click", () => startQuickActionEdit(preset));
 
-    const removeButton = document.createElement("button");
-    removeButton.className = "small-button danger-small";
-    removeButton.type = "button";
-    removeButton.textContent = t("removeActionButton");
-    removeButton.addEventListener("click", () => removeQuickAction(preset));
-
-    const actions = document.createElement("div");
-    actions.className = "action-card-tools";
-    actions.append(editButton, removeButton);
-
-    card.append(button, actions);
+    card.append(button, editButton);
     container.appendChild(card);
   });
 }
@@ -1046,6 +1037,7 @@ function startQuickActionAdd() {
   dom.quickActionIconInput.value = "⭐";
   dom.quickActionCategoryInput.value = "earning";
   dom.quickActionVisibleInput.checked = true;
+  dom.removeQuickActionButton.hidden = true;
   dom.quickActionForm.hidden = false;
   updateQuickActionFormTitle();
   dom.quickActionLabelInput.focus();
@@ -1058,6 +1050,7 @@ function startQuickActionEdit(preset) {
   dom.quickActionIconInput.value = preset.icon;
   dom.quickActionCategoryInput.value = preset.category;
   dom.quickActionVisibleInput.checked = preset.visibleToKid;
+  dom.removeQuickActionButton.hidden = false;
   dom.quickActionForm.hidden = false;
   updateQuickActionFormTitle();
   dom.quickActionLabelInput.focus();
@@ -1076,6 +1069,7 @@ function clearQuickActionForm() {
   dom.quickActionIconInput.value = "⭐";
   dom.quickActionCategoryInput.value = "earning";
   dom.quickActionVisibleInput.checked = true;
+  dom.removeQuickActionButton.hidden = true;
   dom.quickActionForm.hidden = true;
   updateQuickActionFormTitle();
 }
@@ -1364,6 +1358,13 @@ function wireEvents() {
   });
 
   dom.cancelQuickActionEditButton.addEventListener("click", clearQuickActionForm);
+
+  dom.removeQuickActionButton.addEventListener("click", () => {
+    const preset = state.activityPresets.find((item) => item.id === dom.quickActionIdInput.value);
+    if (preset) {
+      removeQuickAction(preset);
+    }
+  });
 
   dom.eventStarsInput.addEventListener("input", () => {
     customEventStarsEdited = true;
