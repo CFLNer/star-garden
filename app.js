@@ -51,9 +51,30 @@ const TRANSLATIONS = {
     iconToy: "Toy",
     iconArt: "Art",
     iconStar: "Star",
+    iconMeal: "Meal",
+    iconShirt: "Shirt",
+    iconBasket: "Basket",
+    iconPotty: "Potty",
+    iconWords: "Words",
+    iconReminder: "Reminder",
+    iconSafety: "Safety",
+    iconCloud: "Cloud",
+    addQuickActionButton: "Add Action",
+    quickActionAddTitle: "Add Quick Action",
+    quickActionEditTitle: "Edit Quick Action",
+    saveActionButton: "Save Action",
+    removeActionButton: "Remove",
+    removeActionConfirm: "Remove quick action \"{label}\"?",
+    actionAdded: "Quick action added",
+    actionSaved: "Quick action saved",
+    actionRemoved: "Quick action removed",
     saveRewardButton: "Save Reward",
     cancelEditButton: "Cancel Edit",
     historyTitle: "History",
+    historyPerPageLabel: "Show",
+    historyPageIndicator: "Page {current} of {total}",
+    previousButton: "Previous",
+    nextButton: "Next",
     resetButton: "Reset",
     noActiveReward: "No active reward",
     pickReward: "Pick a reward with a parent",
@@ -149,9 +170,30 @@ const TRANSLATIONS = {
     iconToy: "玩具",
     iconArt: "画画",
     iconStar: "星星",
+    iconMeal: "吃饭",
+    iconShirt: "衣服",
+    iconBasket: "篮子",
+    iconPotty: "如厕",
+    iconWords: "说话",
+    iconReminder: "提醒",
+    iconSafety: "安全",
+    iconCloud: "云朵",
+    addQuickActionButton: "添加操作",
+    quickActionAddTitle: "添加快捷操作",
+    quickActionEditTitle: "编辑快捷操作",
+    saveActionButton: "保存操作",
+    removeActionButton: "删除",
+    removeActionConfirm: "要删除快捷操作“{label}”吗？",
+    actionAdded: "快捷操作已添加",
+    actionSaved: "快捷操作已保存",
+    actionRemoved: "快捷操作已删除",
     saveRewardButton: "保存奖励",
     cancelEditButton: "取消编辑",
     historyTitle: "历史",
+    historyPerPageLabel: "显示",
+    historyPageIndicator: "第 {current} / {total} 页",
+    previousButton: "上一页",
+    nextButton: "下一页",
     resetButton: "重置",
     noActiveReward: "没有当前奖励",
     pickReward: "请家长选择一个奖励",
@@ -390,12 +432,15 @@ const DEFAULT_STATE = {
     }
   ],
   settings: {
-    language: "en"
+    language: "en",
+    historyPageSize: 20
   }
 };
 
 let state = loadState();
 let parentUnlocked = false;
+let historyPage = 1;
+let customEventStarsEdited = false;
 let celebrationTimeout = null;
 let toastTimeout = null;
 
@@ -432,6 +477,17 @@ const dom = {
   parentBalance: document.querySelector("#parentBalance"),
   earningActions: document.querySelector("#earningActions"),
   correctionActions: document.querySelector("#correctionActions"),
+  addQuickActionButton: document.querySelector("#addQuickActionButton"),
+  quickActionForm: document.querySelector("#quickActionForm"),
+  quickActionFormTitle: document.querySelector("#quickActionFormTitle"),
+  quickActionIdInput: document.querySelector("#quickActionIdInput"),
+  quickActionLabelInput: document.querySelector("#quickActionLabelInput"),
+  quickActionStarsInput: document.querySelector("#quickActionStarsInput"),
+  quickActionIconInput: document.querySelector("#quickActionIconInput"),
+  quickActionCategoryInput: document.querySelector("#quickActionCategoryInput"),
+  quickActionVisibleInput: document.querySelector("#quickActionVisibleInput"),
+  cancelQuickActionEditButton: document.querySelector("#cancelQuickActionEditButton"),
+  removeQuickActionButton: document.querySelector("#removeQuickActionButton"),
   customEventForm: document.querySelector("#customEventForm"),
   eventLabelInput: document.querySelector("#eventLabelInput"),
   eventStarsInput: document.querySelector("#eventStarsInput"),
@@ -447,6 +503,11 @@ const dom = {
   cancelRewardEditButton: document.querySelector("#cancelRewardEditButton"),
   rewardList: document.querySelector("#rewardList"),
   historyList: document.querySelector("#historyList"),
+  historyPageSizeSelect: document.querySelector("#historyPageSizeSelect"),
+  historyPagination: document.querySelector("#historyPagination"),
+  historyPrevButton: document.querySelector("#historyPrevButton"),
+  historyPageIndicator: document.querySelector("#historyPageIndicator"),
+  historyNextButton: document.querySelector("#historyNextButton"),
   resetDataButton: document.querySelector("#resetDataButton")
 };
 
@@ -489,6 +550,9 @@ function normalizeState(savedState) {
   const defaultPresetsById = new Map(
     DEFAULT_STATE.activityPresets.map((preset) => [preset.id, preset])
   );
+  const historyPageSize = [20, 50, 200].includes(Number(savedState.settings?.historyPageSize))
+    ? Number(savedState.settings.historyPageSize)
+    : DEFAULT_STATE.settings.historyPageSize;
 
   return {
     ...savedState,
@@ -497,18 +561,26 @@ function normalizeState(savedState) {
       ...(savedState.settings || {}),
       language: SUPPORTED_LANGUAGES.includes(savedState.settings?.language)
         ? savedState.settings.language
-        : DEFAULT_STATE.settings.language
+        : DEFAULT_STATE.settings.language,
+      historyPageSize
     },
     activityPresets: savedState.activityPresets.map((preset) => {
       const defaultPreset = defaultPresetsById.get(preset.id);
       if (!defaultPreset) {
-        return preset;
+        return {
+          id: preset.id || createId("preset"),
+          label: preset.label || "Quick action",
+          defaultStarChange: Math.round(Number(preset.defaultStarChange) || 1),
+          icon: preset.icon || "⭐",
+          category: ["earning", "correction"].includes(preset.category) ? preset.category : "earning",
+          visibleToKid: typeof preset.visibleToKid === "boolean" ? preset.visibleToKid : true
+        };
       }
 
       return {
         ...defaultPreset,
         ...preset,
-        visibleToKid: defaultPreset.visibleToKid
+        visibleToKid: typeof preset.visibleToKid === "boolean" ? preset.visibleToKid : defaultPreset.visibleToKid
       };
     })
   };
@@ -548,6 +620,11 @@ function displayRewardLabel(reward) {
 }
 
 function displayPresetLabel(preset) {
+  const defaultPreset = DEFAULT_STATE.activityPresets.find((item) => item.id === preset.id);
+  if (!defaultPreset || preset.label !== defaultPreset.label) {
+    return preset.label;
+  }
+
   return localizeLabel("presets", preset.id, preset.label);
 }
 
@@ -631,6 +708,7 @@ function addEvent({ label, starChange, category, note = "", visibleToKid = true,
     rewardId
   });
 
+  historyPage = 1;
   saveState();
   render();
 
@@ -908,6 +986,7 @@ function renderQuickActions() {
 
   renderActionGroup(dom.earningActions, earning);
   renderActionGroup(dom.correctionActions, corrections);
+  updateQuickActionFormTitle();
 }
 
 function renderActionGroup(container, presets) {
@@ -915,6 +994,9 @@ function renderActionGroup(container, presets) {
 
   presets.forEach((preset) => {
     const presetLabel = displayPresetLabel(preset);
+    const card = document.createElement("article");
+    card.className = "action-card";
+
     const button = document.createElement("button");
     button.className = `action-button${preset.defaultStarChange < 0 ? " is-correction" : ""}`;
     button.type = "button";
@@ -936,8 +1018,108 @@ function renderActionGroup(container, presets) {
         sourceId: preset.id
       });
     });
-    container.appendChild(button);
+
+    const editButton = document.createElement("button");
+    editButton.className = "small-button";
+    editButton.type = "button";
+    editButton.textContent = t("editButton");
+    editButton.addEventListener("click", () => startQuickActionEdit(preset));
+
+    card.append(button, editButton);
+    container.appendChild(card);
   });
+}
+
+function startQuickActionAdd() {
+  dom.quickActionIdInput.value = "";
+  dom.quickActionLabelInput.value = "";
+  dom.quickActionStarsInput.value = "1";
+  dom.quickActionIconInput.value = "⭐";
+  dom.quickActionCategoryInput.value = "earning";
+  dom.quickActionVisibleInput.checked = true;
+  dom.removeQuickActionButton.hidden = true;
+  dom.quickActionForm.hidden = false;
+  updateQuickActionFormTitle();
+  dom.quickActionLabelInput.focus();
+}
+
+function startQuickActionEdit(preset) {
+  dom.quickActionIdInput.value = preset.id;
+  dom.quickActionLabelInput.value = preset.label;
+  dom.quickActionStarsInput.value = preset.defaultStarChange;
+  dom.quickActionIconInput.value = preset.icon;
+  dom.quickActionCategoryInput.value = preset.category;
+  dom.quickActionVisibleInput.checked = preset.visibleToKid;
+  dom.removeQuickActionButton.hidden = false;
+  dom.quickActionForm.hidden = false;
+  updateQuickActionFormTitle();
+  dom.quickActionLabelInput.focus();
+}
+
+function updateQuickActionFormTitle() {
+  dom.quickActionFormTitle.textContent = dom.quickActionIdInput.value
+    ? t("quickActionEditTitle")
+    : t("quickActionAddTitle");
+}
+
+function clearQuickActionForm() {
+  dom.quickActionIdInput.value = "";
+  dom.quickActionLabelInput.value = "";
+  dom.quickActionStarsInput.value = "";
+  dom.quickActionIconInput.value = "⭐";
+  dom.quickActionCategoryInput.value = "earning";
+  dom.quickActionVisibleInput.checked = true;
+  dom.removeQuickActionButton.hidden = true;
+  dom.quickActionForm.hidden = true;
+  updateQuickActionFormTitle();
+}
+
+function removeQuickAction(preset) {
+  const presetLabel = displayPresetLabel(preset);
+  const confirmed = window.confirm(t("removeActionConfirm", { label: presetLabel }));
+  if (!confirmed) {
+    return;
+  }
+
+  state.activityPresets = state.activityPresets.filter((item) => item.id !== preset.id);
+  if (dom.quickActionIdInput.value === preset.id) {
+    clearQuickActionForm();
+  }
+  saveState();
+  render();
+  showToast(t("actionRemoved"));
+}
+
+function customEventCategoryDefaults(category) {
+  if (category === "correction") {
+    return {
+      starChange: -1,
+      visibleToKid: false,
+      icon: "🌧️"
+    };
+  }
+
+  if (category === "adjustment") {
+    return {
+      starChange: 0,
+      visibleToKid: false,
+      icon: "⭐"
+    };
+  }
+
+  return {
+    starChange: 1,
+    visibleToKid: true,
+    icon: "⭐"
+  };
+}
+
+function applyCustomEventCategoryDefaults({ forceStars = false } = {}) {
+  const defaults = customEventCategoryDefaults(dom.eventCategoryInput.value);
+  if (forceStars || !customEventStarsEdited) {
+    dom.eventStarsInput.value = String(defaults.starChange);
+  }
+  dom.eventVisibleInput.checked = defaults.visibleToKid;
 }
 
 function renderRewards() {
@@ -1011,13 +1193,21 @@ function clearRewardForm() {
 
 function renderHistory() {
   dom.historyList.replaceChildren();
+  dom.historyPageSizeSelect.value = String(state.settings.historyPageSize);
 
   if (!state.events.length) {
     dom.historyList.appendChild(emptyState(t("noEvents")));
+    dom.historyPagination.hidden = true;
     return;
   }
 
-  state.events.slice(0, 60).forEach((event) => {
+  const pageSize = state.settings.historyPageSize;
+  const totalPages = Math.max(1, Math.ceil(state.events.length / pageSize));
+  historyPage = Math.min(Math.max(historyPage, 1), totalPages);
+  const startIndex = (historyPage - 1) * pageSize;
+  const visibleEvents = state.events.slice(startIndex, startIndex + pageSize);
+
+  visibleEvents.forEach((event) => {
     const item = document.createElement("article");
     item.className = "history-item";
     const deltaClass = event.starChange < 0 ? " is-negative" : "";
@@ -1040,6 +1230,14 @@ function renderHistory() {
       ${event.note ? `<p class="history-note">${escapeHtml(eventNote)}</p>` : ""}
     `;
     dom.historyList.appendChild(item);
+  });
+
+  dom.historyPagination.hidden = totalPages <= 1;
+  dom.historyPrevButton.disabled = historyPage <= 1;
+  dom.historyNextButton.disabled = historyPage >= totalPages;
+  dom.historyPageIndicator.textContent = t("historyPageIndicator", {
+    current: historyPage,
+    total: totalPages
   });
 }
 
@@ -1126,10 +1324,61 @@ function wireEvents() {
     showToast(t("profileUpdated"));
   });
 
+  dom.addQuickActionButton.addEventListener("click", startQuickActionAdd);
+
+  dom.quickActionForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const presetId = dom.quickActionIdInput.value;
+    const existingPreset = state.activityPresets.find((item) => item.id === presetId);
+    const label = dom.quickActionLabelInput.value.trim();
+    const starChange = Number(dom.quickActionStarsInput.value);
+
+    if (!label || !Number.isFinite(starChange)) {
+      return;
+    }
+
+    const preset = existingPreset || {
+      id: createId("preset")
+    };
+
+    preset.label = label;
+    preset.defaultStarChange = Math.round(starChange);
+    preset.icon = dom.quickActionIconInput.value;
+    preset.category = dom.quickActionCategoryInput.value;
+    preset.visibleToKid = dom.quickActionVisibleInput.checked;
+
+    if (!existingPreset) {
+      state.activityPresets.push(preset);
+    }
+
+    clearQuickActionForm();
+    saveState();
+    render();
+    showToast(t(existingPreset ? "actionSaved" : "actionAdded"));
+  });
+
+  dom.cancelQuickActionEditButton.addEventListener("click", clearQuickActionForm);
+
+  dom.removeQuickActionButton.addEventListener("click", () => {
+    const preset = state.activityPresets.find((item) => item.id === dom.quickActionIdInput.value);
+    if (preset) {
+      removeQuickAction(preset);
+    }
+  });
+
+  dom.eventStarsInput.addEventListener("input", () => {
+    customEventStarsEdited = true;
+  });
+
+  dom.eventCategoryInput.addEventListener("change", () => {
+    applyCustomEventCategoryDefaults();
+  });
+
   dom.customEventForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const label = dom.eventLabelInput.value.trim();
     const starChange = Number(dom.eventStarsInput.value);
+    const category = dom.eventCategoryInput.value;
 
     if (!label || !Number.isFinite(starChange)) {
       return;
@@ -1138,18 +1387,18 @@ function wireEvents() {
     addEvent({
       label,
       starChange,
-      category: dom.eventCategoryInput.value,
+      category,
       note: dom.eventNoteInput.value,
       visibleToKid: dom.eventVisibleInput.checked,
-      icon: starChange >= 0 ? "⭐" : "🌧️",
+      icon: customEventCategoryDefaults(category).icon,
       feedbackMessage: t("customEventAdded")
     });
 
     dom.eventLabelInput.value = "";
-    dom.eventStarsInput.value = "1";
     dom.eventCategoryInput.value = "earning";
     dom.eventNoteInput.value = "";
-    dom.eventVisibleInput.checked = true;
+    customEventStarsEdited = false;
+    applyCustomEventCategoryDefaults({ forceStars: true });
   });
 
   dom.rewardForm.addEventListener("submit", (event) => {
@@ -1190,6 +1439,25 @@ function wireEvents() {
 
   dom.cancelRewardEditButton.addEventListener("click", clearRewardForm);
 
+  dom.historyPageSizeSelect.addEventListener("change", () => {
+    const pageSize = Number(dom.historyPageSizeSelect.value);
+    state.settings.historyPageSize = [20, 50, 200].includes(pageSize) ? pageSize : 20;
+    historyPage = 1;
+    saveState();
+    render();
+  });
+
+  dom.historyPrevButton.addEventListener("click", () => {
+    historyPage = Math.max(1, historyPage - 1);
+    renderHistory();
+  });
+
+  dom.historyNextButton.addEventListener("click", () => {
+    const totalPages = Math.max(1, Math.ceil(state.events.length / state.settings.historyPageSize));
+    historyPage = Math.min(totalPages, historyPage + 1);
+    renderHistory();
+  });
+
   dom.resetDataButton.addEventListener("click", () => {
     const confirmed = window.confirm(t("resetConfirm"));
     if (!confirmed) {
@@ -1199,6 +1467,8 @@ function wireEvents() {
     const language = currentLanguage();
     state = cloneDefaultState();
     state.settings.language = language;
+    historyPage = 1;
+    customEventStarsEdited = false;
     parentUnlocked = false;
     saveState();
     render();

@@ -113,7 +113,10 @@
             <section class="panel" aria-labelledby="quickActionsTitle">
               <div class="panel-heading">
                 <h2 id="quickActionsTitle" data-i18n="quickActionsTitle">Quick Actions</h2>
-                <span id="parentBalance" class="balance-pill">10 stars</span>
+                <div class="quick-action-tools">
+                  <button id="addQuickActionButton" class="secondary-button" type="button" data-i18n="addQuickActionButton">Add Action</button>
+                  <span id="parentBalance" class="balance-pill">10 stars</span>
+                </div>
               </div>
               <div class="action-groups">
                 <div>
@@ -125,6 +128,52 @@
                   <div id="correctionActions" class="action-grid"></div>
                 </div>
               </div>
+              <form id="quickActionForm" class="stacked-form quick-action-form" hidden>
+                <input id="quickActionIdInput" name="quickActionId" type="hidden">
+                <h3 id="quickActionFormTitle">Edit Quick Action</h3>
+
+                <label for="quickActionLabelInput" data-i18n="eventLabelLabel">Label</label>
+                <input id="quickActionLabelInput" name="label" type="text" maxlength="40">
+
+                <div class="form-pair">
+                  <div>
+                    <label for="quickActionStarsInput" data-i18n="starChangeLabel">Star change</label>
+                    <input id="quickActionStarsInput" name="stars" type="number" step="1" min="-20" max="20">
+                  </div>
+                  <div>
+                    <label for="quickActionIconInput" data-i18n="iconLabel">Icon</label>
+                    <select id="quickActionIconInput" name="icon">
+                      <option value="⭐" data-i18n="iconStar">Star</option>
+                      <option value="🍽️" data-i18n="iconMeal">Meal</option>
+                      <option value="👕" data-i18n="iconShirt">Shirt</option>
+                      <option value="🧺" data-i18n="iconBasket">Basket</option>
+                      <option value="🚽" data-i18n="iconPotty">Potty</option>
+                      <option value="💬" data-i18n="iconWords">Words</option>
+                      <option value="🔔" data-i18n="iconReminder">Reminder</option>
+                      <option value="✋" data-i18n="iconSafety">Safety</option>
+                      <option value="🌧️" data-i18n="iconCloud">Cloud</option>
+                      <option value="🎨" data-i18n="iconArt">Art</option>
+                    </select>
+                  </div>
+                </div>
+
+                <label for="quickActionCategoryInput" data-i18n="categoryLabel">Category</label>
+                <select id="quickActionCategoryInput" name="category">
+                  <option value="earning" data-i18n="categoryEarning">Earn stars</option>
+                  <option value="correction" data-i18n="categoryCorrection">Gentle correction</option>
+                </select>
+
+                <label class="checkbox-line">
+                  <input id="quickActionVisibleInput" name="visible" type="checkbox">
+                  <span data-i18n="showInKidView">Show this in kid view</span>
+                </label>
+
+                <div class="form-pair">
+                  <button class="secondary-button full-button" type="submit" data-i18n="saveActionButton">Save Action</button>
+                  <button id="cancelQuickActionEditButton" class="ghost-button full-button" type="button" data-i18n="cancelEditButton">Cancel Edit</button>
+                </div>
+                <button id="removeQuickActionButton" class="danger-button full-button" type="button" hidden data-i18n="removeActionButton">Remove</button>
+              </form>
             </section>
 
             <section class="panel" aria-labelledby="customEventTitle">
@@ -196,9 +245,24 @@
             <section class="panel" aria-labelledby="historyTitle">
               <div class="panel-heading">
                 <h2 id="historyTitle" data-i18n="historyTitle">History</h2>
-                <button id="resetDataButton" class="danger-button" type="button" data-i18n="resetButton">Reset</button>
+                <div class="history-tools">
+                  <label class="history-page-size" for="historyPageSizeSelect">
+                    <span data-i18n="historyPerPageLabel">Show</span>
+                    <select id="historyPageSizeSelect" name="historyPageSize">
+                      <option value="20">20</option>
+                      <option value="50">50</option>
+                      <option value="200">200</option>
+                    </select>
+                  </label>
+                  <button id="resetDataButton" class="danger-button" type="button" data-i18n="resetButton">Reset</button>
+                </div>
               </div>
               <div id="historyList" class="history-list"></div>
+              <div id="historyPagination" class="history-pagination" hidden>
+                <button id="historyPrevButton" class="small-button" type="button" data-i18n="previousButton">Previous</button>
+                <span id="historyPageIndicator" class="history-page-indicator">Page 1 of 1</span>
+                <button id="historyNextButton" class="small-button" type="button" data-i18n="nextButton">Next</button>
+              </div>
             </section>
           </div>
         </section>

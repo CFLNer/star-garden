@@ -633,6 +633,18 @@ textarea {
   font-weight: 900;
 }
 
+.quick-action-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.quick-action-tools .secondary-button {
+  min-height: 38px;
+  padding-inline: 12px;
+}
+
 .action-groups {
   display: grid;
   gap: 16px;
@@ -651,6 +663,12 @@ textarea {
   gap: 10px;
 }
 
+.action-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
 .action-button {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
@@ -662,6 +680,10 @@ textarea {
   background: #fffef7;
   color: var(--ink);
   text-align: left;
+}
+
+.action-card .small-button {
+  width: 100%;
 }
 
 .action-button strong,
@@ -690,6 +712,16 @@ textarea {
 
 .action-button.is-correction .action-icon {
   background: #fff0ea;
+}
+
+.quick-action-form {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.quick-action-form h3 {
+  margin: 0;
 }
 
 .form-row,
@@ -829,6 +861,12 @@ textarea {
   color: #ffffff;
 }
 
+.small-button.danger-small {
+  border-color: rgba(216, 85, 85, 0.28);
+  background: #fff1ef;
+  color: #9a3939;
+}
+
 .small-button:disabled {
   cursor: not-allowed;
   opacity: 0.46;
@@ -858,6 +896,48 @@ textarea {
   margin: 8px 0 0;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.history-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.history-page-size {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.history-page-size select {
+  min-height: 38px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: var(--ink);
+  font: inherit;
+}
+
+.history-pagination {
+  display: grid;
+  grid-template-columns: minmax(88px, 1fr) auto minmax(88px, 1fr);
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.history-page-indicator {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 900;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .empty-state {
@@ -935,6 +1015,20 @@ textarea {
   }
 
   .reward-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .history-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .quick-action-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .history-pagination {
     grid-template-columns: 1fr;
   }
 
