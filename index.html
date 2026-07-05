@@ -113,7 +113,10 @@
             <section class="panel" aria-labelledby="quickActionsTitle">
               <div class="panel-heading">
                 <h2 id="quickActionsTitle" data-i18n="quickActionsTitle">Quick Actions</h2>
-                <span id="parentBalance" class="balance-pill">10 stars</span>
+                <div class="quick-action-tools">
+                  <button id="addQuickActionButton" class="secondary-button" type="button" data-i18n="addQuickActionButton">Add Action</button>
+                  <span id="parentBalance" class="balance-pill">10 stars</span>
+                </div>
               </div>
               <div class="action-groups">
                 <div>
@@ -127,7 +130,7 @@
               </div>
               <form id="quickActionForm" class="stacked-form quick-action-form" hidden>
                 <input id="quickActionIdInput" name="quickActionId" type="hidden">
-                <h3 id="quickActionEditTitle" data-i18n="quickActionEditTitle">Edit Quick Action</h3>
+                <h3 id="quickActionFormTitle">Edit Quick Action</h3>
 
                 <label for="quickActionLabelInput" data-i18n="eventLabelLabel">Label</label>
                 <input id="quickActionLabelInput" name="label" type="text" maxlength="40">

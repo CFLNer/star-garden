@@ -59,9 +59,15 @@ const TRANSLATIONS = {
     iconReminder: "Reminder",
     iconSafety: "Safety",
     iconCloud: "Cloud",
+    addQuickActionButton: "Add Action",
+    quickActionAddTitle: "Add Quick Action",
     quickActionEditTitle: "Edit Quick Action",
     saveActionButton: "Save Action",
+    removeActionButton: "Remove",
+    removeActionConfirm: "Remove quick action \"{label}\"?",
+    actionAdded: "Quick action added",
     actionSaved: "Quick action saved",
+    actionRemoved: "Quick action removed",
     saveRewardButton: "Save Reward",
     cancelEditButton: "Cancel Edit",
     historyTitle: "History",
@@ -172,9 +178,15 @@ const TRANSLATIONS = {
     iconReminder: "提醒",
     iconSafety: "安全",
     iconCloud: "云朵",
+    addQuickActionButton: "添加操作",
+    quickActionAddTitle: "添加快捷操作",
     quickActionEditTitle: "编辑快捷操作",
     saveActionButton: "保存操作",
+    removeActionButton: "删除",
+    removeActionConfirm: "要删除快捷操作“{label}”吗？",
+    actionAdded: "快捷操作已添加",
     actionSaved: "快捷操作已保存",
+    actionRemoved: "快捷操作已删除",
     saveRewardButton: "保存奖励",
     cancelEditButton: "取消编辑",
     historyTitle: "历史",
@@ -465,7 +477,9 @@ const dom = {
   parentBalance: document.querySelector("#parentBalance"),
   earningActions: document.querySelector("#earningActions"),
   correctionActions: document.querySelector("#correctionActions"),
+  addQuickActionButton: document.querySelector("#addQuickActionButton"),
   quickActionForm: document.querySelector("#quickActionForm"),
+  quickActionFormTitle: document.querySelector("#quickActionFormTitle"),
   quickActionIdInput: document.querySelector("#quickActionIdInput"),
   quickActionLabelInput: document.querySelector("#quickActionLabelInput"),
   quickActionStarsInput: document.querySelector("#quickActionStarsInput"),
@@ -552,7 +566,14 @@ function normalizeState(savedState) {
     activityPresets: savedState.activityPresets.map((preset) => {
       const defaultPreset = defaultPresetsById.get(preset.id);
       if (!defaultPreset) {
-        return preset;
+        return {
+          id: preset.id || createId("preset"),
+          label: preset.label || "Quick action",
+          defaultStarChange: Math.round(Number(preset.defaultStarChange) || 1),
+          icon: preset.icon || "⭐",
+          category: ["earning", "correction"].includes(preset.category) ? preset.category : "earning",
+          visibleToKid: typeof preset.visibleToKid === "boolean" ? preset.visibleToKid : true
+        };
       }
 
       return {
@@ -964,6 +985,7 @@ function renderQuickActions() {
 
   renderActionGroup(dom.earningActions, earning);
   renderActionGroup(dom.correctionActions, corrections);
+  updateQuickActionFormTitle();
 }
 
 function renderActionGroup(container, presets) {
@@ -1002,9 +1024,31 @@ function renderActionGroup(container, presets) {
     editButton.textContent = t("editButton");
     editButton.addEventListener("click", () => startQuickActionEdit(preset));
 
-    card.append(button, editButton);
+    const removeButton = document.createElement("button");
+    removeButton.className = "small-button danger-small";
+    removeButton.type = "button";
+    removeButton.textContent = t("removeActionButton");
+    removeButton.addEventListener("click", () => removeQuickAction(preset));
+
+    const actions = document.createElement("div");
+    actions.className = "action-card-tools";
+    actions.append(editButton, removeButton);
+
+    card.append(button, actions);
     container.appendChild(card);
   });
+}
+
+function startQuickActionAdd() {
+  dom.quickActionIdInput.value = "";
+  dom.quickActionLabelInput.value = "";
+  dom.quickActionStarsInput.value = "1";
+  dom.quickActionIconInput.value = "⭐";
+  dom.quickActionCategoryInput.value = "earning";
+  dom.quickActionVisibleInput.checked = true;
+  dom.quickActionForm.hidden = false;
+  updateQuickActionFormTitle();
+  dom.quickActionLabelInput.focus();
 }
 
 function startQuickActionEdit(preset) {
@@ -1015,7 +1059,14 @@ function startQuickActionEdit(preset) {
   dom.quickActionCategoryInput.value = preset.category;
   dom.quickActionVisibleInput.checked = preset.visibleToKid;
   dom.quickActionForm.hidden = false;
+  updateQuickActionFormTitle();
   dom.quickActionLabelInput.focus();
+}
+
+function updateQuickActionFormTitle() {
+  dom.quickActionFormTitle.textContent = dom.quickActionIdInput.value
+    ? t("quickActionEditTitle")
+    : t("quickActionAddTitle");
 }
 
 function clearQuickActionForm() {
@@ -1026,6 +1077,23 @@ function clearQuickActionForm() {
   dom.quickActionCategoryInput.value = "earning";
   dom.quickActionVisibleInput.checked = true;
   dom.quickActionForm.hidden = true;
+  updateQuickActionFormTitle();
+}
+
+function removeQuickAction(preset) {
+  const presetLabel = displayPresetLabel(preset);
+  const confirmed = window.confirm(t("removeActionConfirm", { label: presetLabel }));
+  if (!confirmed) {
+    return;
+  }
+
+  state.activityPresets = state.activityPresets.filter((item) => item.id !== preset.id);
+  if (dom.quickActionIdInput.value === preset.id) {
+    clearQuickActionForm();
+  }
+  saveState();
+  render();
+  showToast(t("actionRemoved"));
 }
 
 function customEventCategoryDefaults(category) {
@@ -1262,16 +1330,22 @@ function wireEvents() {
     showToast(t("profileUpdated"));
   });
 
+  dom.addQuickActionButton.addEventListener("click", startQuickActionAdd);
+
   dom.quickActionForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const presetId = dom.quickActionIdInput.value;
-    const preset = state.activityPresets.find((item) => item.id === presetId);
+    const existingPreset = state.activityPresets.find((item) => item.id === presetId);
     const label = dom.quickActionLabelInput.value.trim();
     const starChange = Number(dom.quickActionStarsInput.value);
 
-    if (!preset || !label || !Number.isFinite(starChange)) {
+    if (!label || !Number.isFinite(starChange)) {
       return;
     }
+
+    const preset = existingPreset || {
+      id: createId("preset")
+    };
 
     preset.label = label;
     preset.defaultStarChange = Math.round(starChange);
@@ -1279,10 +1353,14 @@ function wireEvents() {
     preset.category = dom.quickActionCategoryInput.value;
     preset.visibleToKid = dom.quickActionVisibleInput.checked;
 
+    if (!existingPreset) {
+      state.activityPresets.push(preset);
+    }
+
     clearQuickActionForm();
     saveState();
     render();
-    showToast(t("actionSaved"));
+    showToast(t(existingPreset ? "actionSaved" : "actionAdded"));
   });
 
   dom.cancelQuickActionEditButton.addEventListener("click", clearQuickActionForm);

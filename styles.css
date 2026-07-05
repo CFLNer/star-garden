@@ -633,6 +633,18 @@ textarea {
   font-weight: 900;
 }
 
+.quick-action-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.quick-action-tools .secondary-button {
+  min-height: 38px;
+  padding-inline: 12px;
+}
+
 .action-groups {
   display: grid;
   gap: 16px;
@@ -670,8 +682,10 @@ textarea {
   text-align: left;
 }
 
-.action-card .small-button {
-  width: 100%;
+.action-card-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .action-button strong,
@@ -849,6 +863,12 @@ textarea {
   color: #ffffff;
 }
 
+.small-button.danger-small {
+  border-color: rgba(216, 85, 85, 0.28);
+  background: #fff1ef;
+  color: #9a3939;
+}
+
 .small-button:disabled {
   cursor: not-allowed;
   opacity: 0.46;
@@ -1003,6 +1023,15 @@ textarea {
   .history-tools {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .quick-action-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .action-card-tools {
+    grid-template-columns: 1fr;
   }
 
   .history-pagination {
