@@ -22,15 +22,21 @@ test('uploaded avatar resizes, shares across devices and can be removed', async 
   await openGarden(page);
   await openGarden(other);
   await unlock(page);
+  await page.locator('#editProfileButton').click();
   await page.locator('#avatarFileInput').setInputFiles(await photoFile(page));
   await expect.poll(() => server.garden.document.child.avatarPhotoPath).toBeTruthy();
   await expect(page.locator('#avatarPreview')).toBeVisible();
   await expect(other.locator('#kidAvatar img')).toBeVisible();
+  await page.locator('#cancelProfileEditButton').click();
+  await expect(page.locator('#profileAvatar img')).toBeVisible();
   const dimensions = await other.locator('#kidAvatar img').evaluate(image => ({ width: image.naturalWidth, height: image.naturalHeight }));
   expect(dimensions).toEqual({ width: 512, height: 384 });
+  await page.locator('#editProfileButton').click();
   await page.locator('#removePhotoButton').click();
   await expect(other.locator('#kidAvatar img')).toHaveCount(0);
   await expect(other.locator('#kidAvatar')).toContainText('🦁');
+  await page.locator('#cancelProfileEditButton').click();
+  await expect(page.locator('#profileAvatar')).toContainText('🦁');
   await otherContext.close();
 });
 
@@ -39,6 +45,7 @@ test('invalid and oversized photos or failed upload preserve the existing avatar
   await server.connect(context);
   await openGarden(page);
   await unlock(page);
+  await page.locator('#editProfileButton').click();
   await page.locator('#avatarFileInput').setInputFiles({ name: 'bad.txt', mimeType: 'text/plain', buffer: Buffer.from('not an image') });
   expect(server.photos.size).toBe(0);
   await page.locator('#avatarFileInput').setInputFiles({ name: 'large.png', mimeType: 'image/png', buffer: Buffer.alloc(5 * 1024 * 1024 + 1) });
