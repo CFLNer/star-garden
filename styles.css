@@ -18,6 +18,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html {
   min-height: 100%;
   background: linear-gradient(180deg, var(--sky) 0%, #f4fbec 52%, #fff7e3 100%);
@@ -47,6 +51,11 @@ button {
 button:active,
 button.is-feedback {
   transform: scale(0.98);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 button:focus-visible,
@@ -325,6 +334,41 @@ textarea:focus-visible {
   gap: 12px;
 }
 
+.panel-heading {
+  flex-wrap: wrap;
+}
+
+.panel .panel-heading h2 {
+  margin: 0;
+}
+
+.disclosure-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-toggle {
+  display: grid;
+  min-width: 44px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #eaf7e5;
+  color: var(--leaf-dark);
+  font-size: 1.5rem;
+  font-weight: 900;
+}
+
+.section-body {
+  margin-top: 14px;
+}
+
+.profile-panel .panel-heading,
+.account-panel .panel-heading {
+  margin-bottom: 12px;
+}
+
 .progress-labels {
   color: var(--leaf-dark);
   font-weight: 900;
@@ -526,9 +570,8 @@ textarea:focus-visible {
   margin-top: 24px;
 }
 
-.pin-card p {
-  margin: 0 0 14px;
-  color: var(--muted);
+.pin-card .form-error:empty {
+  display: none;
 }
 
 label,
@@ -576,10 +619,88 @@ textarea {
   font-weight: 800;
 }
 
-.parent-tools {
+.parent-tools,
+.garden-tools {
   display: grid;
   gap: 14px;
+  min-width: 0;
+}
+
+.parent-tools {
   padding-bottom: 24px;
+}
+
+.garden-tools > .panel {
+  min-width: 0;
+}
+
+.account-details,
+.account-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.account-details {
+  justify-content: space-between;
+}
+
+#accountEmail {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.account-status,
+.field-help,
+.setup-garden p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.account-status:empty,
+.form-error:empty {
+  display: none;
+}
+
+.account-panel > .form-error:not(:empty) {
+  margin-top: 10px;
+}
+
+.account-message {
+  padding: 28px 20px;
+}
+
+.account-actions > button,
+.account-details > button,
+.panel-heading > button {
+  padding-inline: 12px;
+}
+
+.setup-garden {
+  margin-top: 14px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.avatar-upload {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.avatar-preview {
+  width: 128px;
+  height: 128px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.field-help {
+  margin: 0;
 }
 
 .compact-panel {
@@ -903,6 +1024,7 @@ textarea {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+  margin-bottom: 12px;
 }
 
 .history-page-size {
@@ -966,13 +1088,12 @@ textarea {
     justify-content: center;
   }
 
-  .parent-tools {
+  .garden-tools {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
   }
 
-  .panel:nth-of-type(3),
-  .panel:nth-of-type(4) {
+  .wide-panel {
     grid-column: span 2;
   }
 }
