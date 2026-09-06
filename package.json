@@ -1,0 +1,22 @@
+{
+  "name": "star-garden",
+  "version": "2.0.0",
+  "private": true,
+  "description": "A shared family star garden, hosted as a static PWA",
+  "scripts": {
+    "start": "python3 -m http.server 8000 --bind 127.0.0.1",
+    "check": "node --check app.js && node --check storage.js && node --check garden-session.js && node --check ui-translations.js && node --check service-worker.js",
+    "test": "npm run check && npm run test:storage && npm run test:session && npm run test:browser",
+    "test:browser": "playwright test",
+    "test:database": "python3 tests/database/run.py",
+    "test:storage": "node --test tests/database/storage.test.cjs",
+    "test:session": "node --test tests/session.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@supabase/supabase-js": "2.115.0"
+  }
+}

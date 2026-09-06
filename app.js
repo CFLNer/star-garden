@@ -243,6 +243,10 @@ const TRANSLATIONS = {
   }
 };
 
+for (const language of SUPPORTED_LANGUAGES) {
+  Object.assign(TRANSLATIONS[language], window.EXTRA_TRANSLATIONS?.[language]);
+}
+
 const LABELS = {
   child: {
     "Little Star": {
@@ -437,7 +441,23 @@ const DEFAULT_STATE = {
   }
 };
 
-let state = loadState();
+const legacyState = loadLegacyState();
+let state = cloneDefaultState();
+state.settings = loadPreferences(legacyState?.settings);
+const gardenSession = new GardenSession(new GardenStore(window.STAR_GARDEN_CONFIG || {}));
+const draftRevisions = new Map();
+const expandedSections = new Set();
+let parentGeneration = 0;
+let accountBusy = false;
+let photoBusy = false;
+let avatarURL = null;
+let avatarPath = null;
+let photoPreviewURL = null;
+let pendingSuccess = null;
+let mutationInProgress = false;
+let photoDraft = null;
+let lastRestoredResult = null;
+const dismissedDraftContexts = new WeakSet();
 let parentUnlocked = false;
 let historyPage = 1;
 let customEventStarsEdited = false;
@@ -508,20 +528,42 @@ const dom = {
   historyPrevButton: document.querySelector("#historyPrevButton"),
   historyPageIndicator: document.querySelector("#historyPageIndicator"),
   historyNextButton: document.querySelector("#historyNextButton"),
-  resetDataButton: document.querySelector("#resetDataButton")
+  gardenTools: document.querySelector("#gardenTools"),
+  kidGardenContent: document.querySelector("#kidGardenContent"),
+  kidAccountMessage: document.querySelector("#kidAccountMessage"),
+  kidSyncStatus: document.querySelector("#kidSyncStatus"),
+  accountForm: document.querySelector("#accountForm"),
+  accountDetails: document.querySelector("#accountDetails"),
+  accountEmailInput: document.querySelector("#accountEmailInput"),
+  accountPasswordInput: document.querySelector("#accountPasswordInput"),
+  accountEmail: document.querySelector("#accountEmail"),
+  accountError: document.querySelector("#accountError"),
+  accountStatus: document.querySelector("#accountStatus"),
+  signInButton: document.querySelector("#signInButton"),
+  signOutButton: document.querySelector("#signOutButton"),
+  setupGarden: document.querySelector("#setupGarden"),
+  importGardenButton: document.querySelector("#importGardenButton"),
+  freshGardenButton: document.querySelector("#freshGardenButton"),
+  retrySaveButton: document.querySelector("#retrySaveButton"),
+  discardSaveButton: document.querySelector("#discardSaveButton"),
+  avatarFileInput: document.querySelector("#avatarFileInput"),
+  uploadPhotoButton: document.querySelector("#uploadPhotoButton"),
+  removePhotoButton: document.querySelector("#removePhotoButton"),
+  avatarPreview: document.querySelector("#avatarPreview"),
+  avatarUploadError: document.querySelector("#avatarUploadError")
 };
 
 function cloneDefaultState() {
   return JSON.parse(JSON.stringify(DEFAULT_STATE));
 }
 
-function loadState() {
+function loadLegacyState() {
   const fallback = cloneDefaultState();
 
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) {
-      return fallback;
+      return null;
     }
 
     const parsed = JSON.parse(saved);
@@ -541,8 +583,8 @@ function loadState() {
       }
     });
   } catch (error) {
-    console.warn("Could not load Star Garden state. Starting fresh.", error);
-    return fallback;
+    console.warn("Could not read the legacy garden. The original data has been preserved.", error);
+    return null;
   }
 }
 
@@ -570,7 +612,7 @@ function normalizeState(savedState) {
         return {
           id: preset.id || createId("preset"),
           label: preset.label || "Quick action",
-          defaultStarChange: Math.round(Number(preset.defaultStarChange) || 1),
+          defaultStarChange: Number.isFinite(Number(preset.defaultStarChange)) ? Math.round(Number(preset.defaultStarChange)) : 1,
           icon: preset.icon || "⭐",
           category: ["earning", "correction"].includes(preset.category) ? preset.category : "earning",
           visibleToKid: typeof preset.visibleToKid === "boolean" ? preset.visibleToKid : true
@@ -586,8 +628,168 @@ function normalizeState(savedState) {
   };
 }
 
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+function loadPreferences(fallback = {}) {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem("star-garden-preferences") || "{}"); } catch (_) { /* Defaults work without storage. */ }
+  const settings = { ...DEFAULT_STATE.settings, ...fallback, ...saved };
+  return {
+    language: SUPPORTED_LANGUAGES.includes(settings.language) ? settings.language : "en",
+    historyPageSize: [20, 50, 200].includes(settings.historyPageSize) ? settings.historyPageSize : 20
+  };
+}
+
+function savePreferences() {
+  try { localStorage.setItem("star-garden-preferences", JSON.stringify(state.settings)); } catch (_) { /* Preferences remain usable for this visit. */ }
+}
+
+function gardenDocument(source = state) {
+  const { settings, ...document } = structuredClone(source);
+  return document;
+}
+
+function canUseParentTools() {
+  return parentUnlocked && dom.parentView.classList.contains("is-active") && Boolean(gardenSession.garden);
+}
+
+function canMutate(parentOnly = true) {
+  return gardenSession.canWrite && !photoBusy && !mutationInProgress && (!parentOnly || canUseParentTools());
+}
+
+function markDraft(form) {
+  if (!draftRevisions.has(form.id)) draftRevisions.set(form.id, gardenSession.garden?.revision);
+}
+
+async function mutateGarden(change, { form = null, parentOnly = true, success = null } = {}) {
+  if (!canMutate(parentOnly)) return false;
+  const next = gardenDocument();
+  if (change(next) === false) return false;
+  const revision = form ? (draftRevisions.get(form.id) ?? gardenSession.garden.revision) : gardenSession.garden.revision;
+  const generation = parentGeneration;
+  const epoch = gardenSession.epoch;
+  pendingSuccess = () => {
+    if (epoch !== gardenSession.epoch || (parentOnly && generation !== parentGeneration)) return;
+    if (form) draftRevisions.delete(form.id);
+    success?.();
+  };
+  mutationInProgress = true;
+  render();
+  const context = form ? captureDraft(form) : null;
+  let result;
+  try { result = await gardenSession.commit(next, revision, context); }
+  finally { mutationInProgress = false; }
+  if (epoch !== gardenSession.epoch) return false;
+  if (["saved", "duplicate"].includes(result.status)) {
+    pendingSuccess?.();
+    pendingSuccess = null;
+    render();
+    return true;
+  }
+  if (result.status === "error" && gardenSession.pending?.document === next) {
+    pendingSuccess.operationId = gardenSession.pending.operationId;
+  } else pendingSuccess = null;
+  render();
+  return false;
+}
+
+function clearDrafts({ dismissPending = true } = {}) {
+  if (dismissPending) {
+    for (const context of [gardenSession.pending?.context, gardenSession.lastResult?.context]) {
+      if (context && typeof context === "object") dismissedDraftContexts.add(context);
+    }
+  }
+  draftRevisions.clear();
+  clearQuickActionForm();
+  clearRewardForm();
+  dom.customEventForm.reset();
+  customEventStarsEdited = false;
+  applyCustomEventCategoryDefaults({ forceStars: true });
+  dom.childNameInput.value = state.child.name;
+  dom.avatarFileInput.value = "";
+  dom.avatarUploadError.textContent = "";
+  clearPhotoDraft();
+}
+
+function lockParent({ focus = false } = {}) {
+  const wasUnlocked = parentUnlocked;
+  parentUnlocked = false;
+  parentGeneration += 1;
+  lastRestoredResult = null;
+  expandedSections.clear();
+  clearDrafts({ dismissPending: wasUnlocked });
+  dom.pinInput.value = "";
+  dom.pinError.textContent = "";
+  dom.accountPasswordInput.value = "";
+  dom.accountError.textContent = "";
+  clearTimeout(toastTimeout);
+  dom.appToast.textContent = "";
+  dom.appToast.className = "app-toast";
+  clearTimeout(celebrationTimeout);
+  dom.celebration.textContent = "";
+  dom.celebration.classList.remove("is-visible");
+  render();
+  if (focus) dom.pinInput.focus();
+}
+
+function setSection(name, expanded) {
+  if (expanded) expandedSections.add(name);
+  else expandedSections.delete(name);
+  renderDisclosures();
+}
+
+function renderDisclosures() {
+  document.querySelectorAll("[data-section-toggle]").forEach((button) => {
+    const name = button.dataset.sectionToggle;
+    const expanded = expandedSections.has(name);
+    button.textContent = expanded ? "−" : "+";
+    button.setAttribute("aria-expanded", String(expanded));
+    button.setAttribute("aria-label", t(expanded ? "collapseSection" : "expandSection", { section: t(`${name}Title`) }));
+    document.getElementById(button.getAttribute("aria-controls")).hidden = !expanded;
+  });
+}
+
+function renderAccount() {
+  const signedIn = Boolean(gardenSession.user);
+  const hasGarden = signedIn && Boolean(gardenSession.garden);
+  dom.accountForm.hidden = signedIn;
+  dom.accountDetails.hidden = !signedIn;
+  dom.accountEmail.textContent = gardenSession.user?.email || "";
+  dom.accountStatus.textContent = t(photoBusy ? "saving" : gardenSession.status);
+  dom.signInButton.disabled = !gardenSession.store.configured || !navigator.onLine || accountBusy;
+  dom.signOutButton.disabled = accountBusy;
+  dom.setupGarden.hidden = !signedIn || Boolean(gardenSession.garden) || !gardenSession.ready;
+  dom.importGardenButton.disabled = !legacyState || gardenSession.busy || !navigator.onLine;
+  dom.importGardenButton.title = legacyState ? "" : t("importUnavailable");
+  dom.freshGardenButton.disabled = gardenSession.busy || !navigator.onLine;
+  dom.gardenTools.hidden = !hasGarden;
+  dom.kidGardenContent.hidden = !hasGarden;
+  dom.kidAccountMessage.hidden = hasGarden;
+  dom.kidAccountMessage.textContent = t(signedIn && !gardenSession.ready ? gardenSession.status : "askParentSignIn");
+  const kidStatus = photoBusy ? "saving" : gardenSession.status;
+  dom.kidSyncStatus.textContent = t(kidStatus);
+  dom.kidSyncStatus.hidden = kidStatus === "synced";
+  dom.retrySaveButton.hidden = !gardenSession.pending && !gardenSession.conflict;
+  dom.retrySaveButton.disabled = gardenSession.busy || !navigator.onLine;
+  dom.retrySaveButton.textContent = t(gardenSession.pending ? "retrySave" : "reviewRetry");
+  dom.discardSaveButton.hidden = !gardenSession.conflict;
+  dom.removePhotoButton.hidden = !state.child.avatarPhotoPath;
+  dom.uploadPhotoButton.textContent = t(photoDraft ? "savePhoto" : "uploadPhoto");
+  dom.avatarPreview.hidden = !photoPreviewURL && !avatarURL;
+  if (photoPreviewURL || avatarURL) dom.avatarPreview.src = photoPreviewURL || avatarURL;
+  else dom.avatarPreview.removeAttribute("src");
+}
+
+function renderAvailability() {
+  // Retain form drafts while disconnected; only actions which save content are blocked.
+  const enabled = canMutate();
+  dom.gardenTools.querySelectorAll('button[type="submit"], [data-mutation]').forEach((button) => {
+    button.disabled = !enabled || button.dataset.unavailable === "true";
+  });
+  for (const button of [dom.addQuickActionButton, dom.uploadPhotoButton, dom.removePhotoButton, dom.removeQuickActionButton]) {
+    button.disabled = !enabled;
+  }
+  dom.gardenTools.querySelectorAll("input, textarea, select").forEach((input) => {
+    if (input !== dom.historyPageSizeSelect) input.disabled = gardenSession.busy || photoBusy || mutationInProgress || Boolean(gardenSession.pending);
+  });
 }
 
 function currentLanguage() {
@@ -657,6 +859,8 @@ function localizePageText() {
     element.placeholder = t(element.dataset.i18nPlaceholder);
   });
 
+  document.querySelectorAll("[data-i18n-alt]").forEach((element) => { element.alt = t(element.dataset.i18nAlt); });
+
   dom.translatableAriaLabels.forEach((element) => {
     element.setAttribute("aria-label", t(element.dataset.i18nAriaLabel));
   });
@@ -678,6 +882,8 @@ function getActiveReward() {
 
 function setView(viewName) {
   const showParent = viewName === "parent";
+  const wasParent = dom.parentView.classList.contains("is-active");
+  if (!showParent || !wasParent) lockParent();
 
   dom.kidView.classList.toggle("is-active", !showParent);
   dom.parentView.classList.toggle("is-active", showParent);
@@ -690,62 +896,55 @@ function setView(viewName) {
   }
 }
 
-function addEvent({ label, starChange, category, note = "", visibleToKid = true, icon = "⭐", feedbackMessage = null, sourceId = null, rewardId = null }) {
+function appendEvent(document, { label, starChange, category, note = "", visibleToKid = true, icon = "⭐", sourceId = null, rewardId = null }) {
   const change = Math.round(Number(starChange) || 0);
-  const previousStars = state.child.currentStars;
-
-  state.child.currentStars = clampStars(previousStars + change);
-  state.events.unshift({
-    id: createId("event"),
-    timestamp: new Date().toISOString(),
-    label: label.trim(),
-    starChange: change,
-    category,
-    note: note.trim(),
-    visibleToKid,
-    icon,
-    sourceId,
-    rewardId
+  document.child.currentStars = clampStars(document.child.currentStars + change);
+  document.events.unshift({
+    id: createId("event"), timestamp: new Date().toISOString(), label: label.trim(),
+    starChange: change, category, note: note.trim(), visibleToKid, icon, sourceId, rewardId
   });
-
-  historyPage = 1;
-  saveState();
-  render();
-
-  if (change > 0) {
-    showCelebration(t("greatJob", { icon, count: change }));
-  }
-
-  if (feedbackMessage !== false) {
-    const toastType = change < 0 && category !== "reward" ? "warning" : "success";
-    showToast(feedbackMessage || t("eventAdded", { label: label.trim(), delta: formatDelta(change) }), toastType);
-  }
-
-  return true;
 }
 
-function redeemReward(rewardId) {
-  const reward = state.rewards.find((item) => item.id === rewardId);
+async function addEvent(options, { form = null } = {}) {
+  return mutateGarden((next) => appendEvent(next, options), {
+    form,
+    success: () => {
+      historyPage = 1;
+      if (options.starChange > 0) showCelebration(t("greatJob", { icon: options.icon || "⭐", count: options.starChange }));
+      showToast(options.feedbackMessage || t("eventAdded", { label: options.label, delta: formatDelta(options.starChange) }),
+        options.starChange < 0 ? "warning" : "success");
+      if (form === dom.customEventForm) {
+        form.reset();
+        customEventStarsEdited = false;
+        applyCustomEventCategoryDefaults({ forceStars: true });
+      }
+    }
+  });
+}
+
+async function redeemReward(rewardId, { parentOnly = false } = {}) {
+  if (!canMutate(parentOnly)) return false;
+  const reward = state.rewards.find((item) => item.id === rewardId && item.active);
   if (!reward || state.child.currentStars < reward.cost) {
     const neededStars = reward ? reward.cost - state.child.currentStars : 0;
     showToast(neededStars > 0 ? t("needMoreStarsToast", { count: neededStars }) : t("rewardUnavailable"), "warning");
     return false;
   }
-
-  const rewardLabel = displayRewardLabel(reward);
-  reward.redeemedAt = new Date().toISOString();
-  addEvent({
-    label: `Redeemed: ${reward.label}`,
-    starChange: -reward.cost,
-    category: "reward",
-    note: "Reward redeemed.",
-    visibleToKid: true,
-    icon: reward.icon,
-    feedbackMessage: t("redeemedToast", { label: rewardLabel }),
-    rewardId: reward.id
+  return mutateGarden((next) => {
+    const target = next.rewards.find((item) => item.id === rewardId);
+    target.redeemedAt = new Date().toISOString();
+    appendEvent(next, {
+      label: `Redeemed: ${reward.label}`, starChange: -reward.cost, category: "reward",
+      note: "Reward redeemed.", visibleToKid: true, icon: reward.icon, rewardId: reward.id
+    });
+  }, {
+    parentOnly,
+    success: () => {
+      historyPage = 1;
+      showToast(t("redeemedToast", { label: displayRewardLabel(reward) }));
+      showCelebration(t("rewardTime", { icon: reward.icon }));
+    }
   });
-  showCelebration(t("rewardTime", { icon: reward.icon }));
-  return true;
 }
 
 function showCelebration(message) {
@@ -789,6 +988,9 @@ function render() {
   renderQuickActions();
   renderRewards();
   renderHistory();
+  renderAccount();
+  renderDisclosures();
+  renderAvailability();
 }
 
 function renderKidView() {
@@ -850,7 +1052,7 @@ function renderKidToday() {
     const isNegative = event.starChange < 0;
     item.className = `today-item${isNegative ? " is-negative" : ""}`;
     item.innerHTML = `
-      <span class="today-icon" aria-hidden="true">${event.icon || "⭐"}</span>
+      <span class="today-icon" aria-hidden="true">${escapeHtml(event.icon || "⭐")}</span>
       <span class="today-reason">${escapeHtml(kidReasonLabel(event))}</span>
       <span class="today-delta${isNegative ? " is-negative" : ""}">${formatDelta(event.starChange)} ${starUnit(event.starChange)}</span>
     `;
@@ -893,18 +1095,18 @@ function renderKidRewards() {
 
   activeRewards.forEach((reward) => {
     const remainingStars = Math.max(reward.cost - state.child.currentStars, 0);
-    const canRedeem = remainingStars === 0;
+    const canRedeem = remainingStars === 0 && canMutate(false);
     const rewardLabel = displayRewardLabel(reward);
     const card = document.createElement("article");
     card.className = `kid-reward-card${canRedeem ? " is-ready" : ""}`;
     card.innerHTML = `
-      <div class="kid-reward-icon" aria-hidden="true">${reward.icon}</div>
+      <div class="kid-reward-icon" aria-hidden="true">${escapeHtml(reward.icon)}</div>
       <div class="kid-reward-copy">
         <strong>${escapeHtml(rewardLabel)}</strong>
         <span>${t("rewardCost", { count: reward.cost, unit: starUnit(reward.cost) })}</span>
       </div>
       <button class="kid-redeem-button" type="button" data-action="kid-redeem" ${canRedeem ? "" : "disabled"}>
-        ${canRedeem ? t("redeemButton") : t("needMore", { count: remainingStars })}
+        ${remainingStars === 0 ? t("redeemButton") : t("needMore", { count: remainingStars })}
       </button>
     `;
 
@@ -920,25 +1122,58 @@ function getAvatarOption(value) {
 
 function renderKidAvatar() {
   const avatar = getAvatarOption(state.child.avatar);
-
   dom.kidAvatar.replaceChildren();
-  dom.kidAvatar.classList.toggle("has-photo", avatar.type === "image");
-
-  if (avatar.type === "image") {
+  dom.kidAvatar.classList.toggle("has-photo", Boolean(avatarURL));
+  if (avatarURL) {
     const image = document.createElement("img");
-    image.src = avatar.src;
+    image.src = avatarURL;
     image.alt = "";
     dom.kidAvatar.appendChild(image);
-    return;
+  } else {
+    dom.kidAvatar.textContent = avatar.emoji;
   }
+}
 
-  dom.kidAvatar.textContent = avatar.emoji;
+async function loadAvatar() {
+  const path = gardenSession.garden?.document.child.avatarPhotoPath || null;
+  if (path === avatarPath && avatarURL) return;
+  if (path !== avatarPath) {
+    if (avatarURL) URL.revokeObjectURL(avatarURL);
+    avatarURL = null;
+    avatarPath = path;
+    renderKidAvatar();
+    renderAccount();
+  }
+  if (!path || !gardenSession.user) return;
+  const epoch = gardenSession.epoch;
+  try {
+    const blob = await gardenSession.store.getPhoto(path, gardenSession.user.id);
+    if (epoch !== gardenSession.epoch || path !== avatarPath) return;
+    if (avatarURL) URL.revokeObjectURL(avatarURL);
+    avatarURL = URL.createObjectURL(blob);
+    renderKidAvatar();
+    renderAccount();
+  } catch (_) { /* The animal avatar remains available if the photo is not cached. */ }
+}
+
+async function chooseAnimal(value) {
+  if (!canMutate()) return;
+  const previousPath = state.child.avatarPhotoPath;
+  const epoch = gardenSession.epoch;
+  await mutateGarden((next) => {
+    next.child.avatar = value;
+    next.child.avatarPhotoPath = null;
+  }, { success: () => {
+    clearPhotoDraft();
+    showToast(t("avatarUpdated"));
+    if (previousPath && epoch === gardenSession.epoch) void gardenSession.store.removePhoto(previousPath).catch(() => {});
+  } });
 }
 
 function renderParentGate() {
   dom.pinGate.hidden = parentUnlocked;
   dom.parentTools.hidden = !parentUnlocked;
-  dom.childNameInput.value = state.child.name;
+  if (!draftRevisions.has(dom.profileForm.id)) dom.childNameInput.value = state.child.name;
   dom.parentBalance.textContent = t("balanceStars", { count: state.child.currentStars });
 }
 
@@ -947,8 +1182,9 @@ function renderAvatarChoices() {
 
   AVATARS.forEach((avatar) => {
     const button = document.createElement("button");
-    button.className = `avatar-choice${avatar.value === state.child.avatar ? " is-selected" : ""}`;
+    button.className = `avatar-choice${avatar.value === state.child.avatar && !state.child.avatarPhotoPath ? " is-selected" : ""}`;
     button.type = "button";
+    button.dataset.mutation = "true";
     const avatarLabel = displayAvatarLabel(avatar);
     button.setAttribute("aria-label", t("chooseAvatar", { label: avatarLabel }));
 
@@ -970,12 +1206,7 @@ function renderAvatarChoices() {
     label.textContent = avatarLabel;
     button.appendChild(label);
 
-    button.addEventListener("click", () => {
-      state.child.avatar = avatar.value;
-      saveState();
-      render();
-      showToast(t("avatarUpdated"));
-    });
+    button.addEventListener("click", () => { void chooseAnimal(avatar.value); });
     dom.avatarChoices.appendChild(button);
   });
 }
@@ -999,9 +1230,10 @@ function renderActionGroup(container, presets) {
 
     const button = document.createElement("button");
     button.className = `action-button${preset.defaultStarChange < 0 ? " is-correction" : ""}`;
+    button.dataset.mutation = "true";
     button.type = "button";
     button.innerHTML = `
-        <span class="action-icon" aria-hidden="true">${preset.icon}</span>
+        <span class="action-icon" aria-hidden="true">${escapeHtml(preset.icon)}</span>
         <span>
         <strong>${escapeHtml(presetLabel)}</strong>
         <span>${t("actionStars", { delta: formatDelta(preset.defaultStarChange) })}</span>
@@ -1022,6 +1254,7 @@ function renderActionGroup(container, presets) {
     const editButton = document.createElement("button");
     editButton.className = "small-button";
     editButton.type = "button";
+    editButton.dataset.mutation = "true";
     editButton.textContent = t("editButton");
     editButton.addEventListener("click", () => startQuickActionEdit(preset));
 
@@ -1031,6 +1264,9 @@ function renderActionGroup(container, presets) {
 }
 
 function startQuickActionAdd() {
+  if (!canMutate()) return;
+  draftRevisions.set(dom.quickActionForm.id, gardenSession.garden.revision);
+  setSection("quickActions", true);
   dom.quickActionIdInput.value = "";
   dom.quickActionLabelInput.value = "";
   dom.quickActionStarsInput.value = "1";
@@ -1044,6 +1280,9 @@ function startQuickActionAdd() {
 }
 
 function startQuickActionEdit(preset) {
+  if (!canMutate()) return;
+  draftRevisions.set(dom.quickActionForm.id, gardenSession.garden.revision);
+  setSection("quickActions", true);
   dom.quickActionIdInput.value = preset.id;
   dom.quickActionLabelInput.value = preset.label;
   dom.quickActionStarsInput.value = preset.defaultStarChange;
@@ -1063,6 +1302,7 @@ function updateQuickActionFormTitle() {
 }
 
 function clearQuickActionForm() {
+  draftRevisions.delete(dom.quickActionForm.id);
   dom.quickActionIdInput.value = "";
   dom.quickActionLabelInput.value = "";
   dom.quickActionStarsInput.value = "";
@@ -1074,20 +1314,15 @@ function clearQuickActionForm() {
   updateQuickActionFormTitle();
 }
 
-function removeQuickAction(preset) {
-  const presetLabel = displayPresetLabel(preset);
-  const confirmed = window.confirm(t("removeActionConfirm", { label: presetLabel }));
-  if (!confirmed) {
-    return;
-  }
-
-  state.activityPresets = state.activityPresets.filter((item) => item.id !== preset.id);
-  if (dom.quickActionIdInput.value === preset.id) {
-    clearQuickActionForm();
-  }
-  saveState();
-  render();
-  showToast(t("actionRemoved"));
+async function removeQuickAction(preset) {
+  if (!canMutate()) return;
+  if (!window.confirm(t("removeActionConfirm", { label: displayPresetLabel(preset) }))) return;
+  await mutateGarden((next) => {
+    next.activityPresets = next.activityPresets.filter((item) => item.id !== preset.id);
+  }, {
+    form: dom.quickActionForm,
+    success: () => { clearQuickActionForm(); showToast(t("actionRemoved")); }
+  });
 }
 
 function customEventCategoryDefaults(category) {
@@ -1147,7 +1382,7 @@ function renderRewards() {
     item.innerHTML = `
       <div class="reward-main">
         <div class="reward-name">
-          <span class="reward-icon" aria-hidden="true">${reward.icon}</span>
+          <span class="reward-icon" aria-hidden="true">${escapeHtml(reward.icon)}</span>
           <span>
             <strong>${escapeHtml(rewardLabel)}</strong>
             <span class="reward-meta">${t("rewardMeta", { count: reward.cost, redeemed: redeemedText })}</span>
@@ -1155,18 +1390,17 @@ function renderRewards() {
         </div>
       </div>
       <div class="reward-actions">
-        <button class="small-button primary-small" type="button" data-action="redeem" ${canRedeem ? "" : "disabled"}>${t("redeemButton")}</button>
-        <button class="small-button" type="button" data-action="target">${t("targetButton")}</button>
-        <button class="small-button" type="button" data-action="edit">${t("editButton")}</button>
+        <button class="small-button primary-small" type="button" data-action="redeem" data-mutation="true" data-unavailable="${!canRedeem}" ${canRedeem ? "" : "disabled"}>${t("redeemButton")}</button>
+        <button class="small-button" type="button" data-action="target" data-mutation="true">${t("targetButton")}</button>
+        <button class="small-button" type="button" data-action="edit" data-mutation="true">${t("editButton")}</button>
       </div>
     `;
 
-    item.querySelector('[data-action="redeem"]').addEventListener("click", () => redeemReward(reward.id));
+    item.querySelector('[data-action="redeem"]').addEventListener("click", () => { void redeemReward(reward.id, { parentOnly: true }); });
     item.querySelector('[data-action="target"]').addEventListener("click", () => {
-      state.child.activeRewardId = reward.id;
-      saveState();
-      render();
-      showToast(t("rewardTargetUpdated"));
+      void mutateGarden((next) => { next.child.activeRewardId = reward.id; }, {
+        success: () => showToast(t("rewardTargetUpdated"))
+      });
     });
     item.querySelector('[data-action="edit"]').addEventListener("click", () => startRewardEdit(reward));
 
@@ -1175,6 +1409,9 @@ function renderRewards() {
 }
 
 function startRewardEdit(reward) {
+  if (!canMutate()) return;
+  draftRevisions.set(dom.rewardForm.id, gardenSession.garden.revision);
+  setSection("rewards", true);
   dom.rewardIdInput.value = reward.id;
   dom.rewardLabelInput.value = reward.label;
   dom.rewardCostInput.value = reward.cost;
@@ -1184,6 +1421,7 @@ function startRewardEdit(reward) {
 }
 
 function clearRewardForm() {
+  draftRevisions.delete(dom.rewardForm.id);
   dom.rewardIdInput.value = "";
   dom.rewardLabelInput.value = "";
   dom.rewardCostInput.value = "5";
@@ -1272,209 +1510,341 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function captureDraft(form) {
+  return {
+    type: "form", formId: form.id, revision: draftRevisions.get(form.id) ?? gardenSession.garden.revision,
+    fields: [...form.elements].filter((field) => field.id && /^(INPUT|SELECT|TEXTAREA)$/.test(field.tagName) && field.type !== "file")
+      .map((field) => ({ id: field.id, value: field.value, checked: field.checked }))
+  };
+}
+
+function restorePendingDraft() {
+  if (!parentUnlocked) return;
+  const pending = gardenSession.pending;
+  const result = gardenSession.lastResult;
+  const source = pending && !gardenSession.busy ? pending : result?.status === "conflict" ? result : null;
+  const context = source?.context;
+  if (!context || source === lastRestoredResult || dismissedDraftContexts.has(context)) return;
+  lastRestoredResult = source;
+  if (context.type === "form") {
+    const form = [dom.profileForm, dom.quickActionForm, dom.customEventForm, dom.rewardForm].find((item) => item.id === context.formId);
+    if (!form || draftRevisions.has(form.id)) return;
+    for (const saved of context.fields || []) {
+      const field = document.getElementById(saved.id);
+      if (field && form.contains(field) && field.type !== "file") {
+        field.value = saved.value;
+        if (field.type === "checkbox") field.checked = saved.checked;
+      }
+    }
+    draftRevisions.set(form.id, context.revision);
+    if (form === dom.quickActionForm) {
+      dom.quickActionForm.hidden = false;
+      dom.removeQuickActionButton.hidden = !dom.quickActionIdInput.value;
+      setSection("quickActions", true);
+    } else if (form === dom.rewardForm) {
+      dom.cancelRewardEditButton.hidden = !dom.rewardIdInput.value;
+      setSection("rewards", true);
+    } else if (form === dom.customEventForm) setSection("customEvent", true);
+  } else if (context.type === "photo" && !photoDraft) {
+    photoDraft = { path: context.path, revision: context.revision };
+    const epoch = gardenSession.epoch;
+    void gardenSession.store.getPhoto(context.path, gardenSession.user.id).then((blob) => {
+      if (epoch !== gardenSession.epoch || photoDraft?.path !== context.path) return;
+      if (photoPreviewURL) URL.revokeObjectURL(photoPreviewURL);
+      photoPreviewURL = URL.createObjectURL(blob);
+      renderAccount();
+    }).catch(() => {});
+  }
+}
+
+function clearPhotoDraft() {
+  const unusedPath = photoDraft?.path;
+  photoDraft = null;
+  if (photoPreviewURL) URL.revokeObjectURL(photoPreviewURL);
+  photoPreviewURL = null;
+  if (unusedPath && unusedPath !== state.child.avatarPhotoPath &&
+      unusedPath !== gardenSession.pending?.document.child.avatarPhotoPath && gardenSession.user) {
+    void gardenSession.store.removePhoto(unusedPath).catch(() => {});
+  }
+}
+
+async function resizePhoto(file) {
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new Error("photoInvalid");
+  if (file.size > 5 * 1024 * 1024) throw new Error("photoTooLarge");
+  // Check the encoded format as well as the file-picker MIME type.
+  const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  const jpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  const png = [137, 80, 78, 71, 13, 10, 26, 10].every((value, i) => bytes[i] === value);
+  const webp = String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" && String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
+  if (!jpeg && !png && !webp) throw new Error("photoInvalid");
+  let bitmap;
+  try { bitmap = await createImageBitmap(file, { imageOrientation: "from-image" }); }
+  catch (_) { throw new Error("photoInvalid"); }
+  const scale = Math.min(1, 512 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const context = canvas.getContext("2d");
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+  if (!blob) throw new Error("photoInvalid");
+  return blob;
+}
+
+async function uploadPhoto(file) {
+  if (!file || !canMutate()) return;
+  const epoch = gardenSession.epoch;
+  const generation = parentGeneration;
+  const revision = gardenSession.garden.revision;
+  photoBusy = true;
+  clearPhotoDraft();
+  dom.avatarUploadError.textContent = "";
+  render();
+  try {
+    const blob = await resizePhoto(file);
+    if (epoch !== gardenSession.epoch || generation !== parentGeneration) return;
+    photoPreviewURL = URL.createObjectURL(blob);
+    renderAccount();
+    const path = await gardenSession.store.uploadPhoto(blob);
+    if (epoch !== gardenSession.epoch || generation !== parentGeneration) {
+      if (epoch === gardenSession.epoch) void gardenSession.store.removePhoto(path).catch(() => {});
+      return;
+    }
+    photoDraft = { path, revision };
+  } catch (error) {
+    if (epoch !== gardenSession.epoch || generation !== parentGeneration) return;
+    clearPhotoDraft();
+    dom.avatarUploadError.textContent = t(["photoInvalid", "photoTooLarge"].includes(error.message) ? error.message : "photoFailed");
+  } finally {
+    if (epoch === gardenSession.epoch) {
+      photoBusy = false;
+      dom.avatarFileInput.value = "";
+      render();
+    }
+  }
+  if (epoch === gardenSession.epoch && generation === parentGeneration && photoDraft) await savePhotoDraft();
+}
+
+async function savePhotoDraft() {
+  if (!photoDraft || !canMutate()) return;
+  const epoch = gardenSession.epoch;
+  const generation = parentGeneration;
+  const previousPath = state.child.avatarPhotoPath;
+  const next = gardenDocument();
+  next.child.avatarPhotoPath = photoDraft.path;
+  const context = { type: "photo", path: photoDraft.path, revision: photoDraft.revision };
+  pendingSuccess = () => {
+    if (epoch !== gardenSession.epoch || generation !== parentGeneration) return;
+    clearPhotoDraft();
+    showToast(t("photoUpdated"));
+    if (previousPath) void gardenSession.store.removePhoto(previousPath).catch(() => {});
+  };
+  photoBusy = true;
+  render();
+  let result;
+  try { result = await gardenSession.commit(next, photoDraft.revision, context); }
+  finally { if (epoch === gardenSession.epoch) photoBusy = false; }
+  if (epoch !== gardenSession.epoch) return;
+  if (["saved", "duplicate"].includes(result.status)) {
+    pendingSuccess?.();
+    pendingSuccess = null;
+  } else if (result.status === "error" && gardenSession.pending?.document === next) {
+    pendingSuccess.operationId = gardenSession.pending.operationId;
+  } else pendingSuccess = null;
+  render();
+}
+
 function wireEvents() {
   dom.languageSelect.addEventListener("change", () => {
-    state.settings.language = SUPPORTED_LANGUAGES.includes(dom.languageSelect.value)
-      ? dom.languageSelect.value
-      : DEFAULT_STATE.settings.language;
-    saveState();
+    state.settings.language = SUPPORTED_LANGUAGES.includes(dom.languageSelect.value) ? dom.languageSelect.value : "en";
+    savePreferences();
     render();
   });
-
-  dom.tabButtons.forEach((button) => {
-    button.addEventListener("click", () => setView(button.dataset.view));
-  });
-
+  dom.tabButtons.forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   dom.brandButton.addEventListener("click", () => setView("kid"));
-
   document.addEventListener("click", (event) => {
     const button = event.target.closest("button");
-    if (button) {
-      pulseElement(button);
-    }
+    if (button) pulseElement(button);
   });
-
+  document.querySelectorAll("[data-section-toggle]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!canUseParentTools()) return;
+      const name = button.dataset.sectionToggle;
+      setSection(name, !expandedSections.has(name));
+    });
+  });
   dom.pinForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    if (dom.pinInput.value === PARENT_PIN) {
-      parentUnlocked = true;
-      dom.pinInput.value = "";
-      dom.pinError.textContent = "";
-      render();
-      showToast(t("parentUnlocked"));
+    if (!dom.parentView.classList.contains("is-active")) return;
+    if (dom.pinInput.value !== PARENT_PIN) {
+      dom.pinError.textContent = t("pinMismatchPunctuated");
       return;
     }
-
-    dom.pinError.textContent = t("pinMismatchPunctuated");
-    showToast(t("pinMismatch"), "warning");
-  });
-
-  dom.lockParentButton.addEventListener("click", () => {
-    parentUnlocked = false;
+    parentUnlocked = true;
+    dom.pinInput.value = "";
+    dom.pinError.textContent = "";
+    restorePendingDraft();
     render();
-    showToast(t("parentLocked"));
+  });
+  dom.lockParentButton.addEventListener("click", () => lockParent({ focus: true }));
+
+  dom.accountForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!parentUnlocked || accountBusy || !navigator.onLine || !gardenSession.store.configured) return;
+    accountBusy = true;
+    dom.accountError.textContent = "";
+    const password = dom.accountPasswordInput.value;
+    const generation = parentGeneration;
+    dom.accountPasswordInput.value = "";
+    render();
+    try { await gardenSession.signIn(dom.accountEmailInput.value.trim(), password); }
+    catch (_) { if (generation === parentGeneration) dom.accountError.textContent = t("signInFailed"); }
+    finally { accountBusy = false; render(); }
+  });
+  dom.signOutButton.addEventListener("click", async () => {
+    if (!parentUnlocked || accountBusy) return;
+    accountBusy = true;
+    lockParent();
+    try { await gardenSession.signOut(); }
+    catch (_) { /* Local session is cleared even if network revocation failed. */ }
+    finally { accountBusy = false; render(); }
+  });
+  const initialize = async (source) => {
+    if (!parentUnlocked || !source) return;
+    await gardenSession.initialize(gardenDocument(source));
+  };
+  dom.importGardenButton.addEventListener("click", () => { void initialize(legacyState); });
+  dom.freshGardenButton.addEventListener("click", () => { void initialize(cloneDefaultState()); });
+
+  dom.retrySaveButton.addEventListener("click", async () => {
+    if (!parentUnlocked || gardenSession.busy || !navigator.onLine) return;
+    if (gardenSession.pending) {
+      const epoch = gardenSession.epoch;
+      const generation = parentGeneration;
+      const result = await gardenSession.retryPending();
+      if (epoch !== gardenSession.epoch || generation !== parentGeneration) return;
+      if (["saved", "duplicate"].includes(result.status)) {
+        if (pendingSuccess?.operationId === gardenSession.lastResult?.operationId) pendingSuccess();
+        else clearDrafts();
+        pendingSuccess = null;
+      } else if (result.status === "conflict") pendingSuccess = null;
+    } else if (gardenSession.conflict) {
+      // Explicit review adopts the latest revision; a form submit is still required.
+      draftRevisions.forEach((_, id) => draftRevisions.set(id, gardenSession.garden.revision));
+      if (photoDraft) photoDraft.revision = gardenSession.garden.revision;
+      gardenSession.reviewConflict();
+    }
+    render();
+  });
+  dom.discardSaveButton.addEventListener("click", () => {
+    if (!parentUnlocked || gardenSession.pending) return;
+    clearDrafts();
+    gardenSession.reviewConflict();
+    render();
   });
 
+  [dom.profileForm, dom.quickActionForm, dom.customEventForm, dom.rewardForm].forEach((form) => {
+    for (const type of ["input", "change"]) form.addEventListener(type, (event) => {
+      if (canUseParentTools() && event.target !== dom.avatarFileInput) markDraft(form);
+    });
+  });
   dom.profileForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    const name = dom.childNameInput.value.trim();
-    state.child.name = name || "Little Star";
-    saveState();
-    render();
-    showToast(t("profileUpdated"));
+    const name = dom.childNameInput.value.trim().slice(0, 24) || "Little Star";
+    void mutateGarden((next) => { next.child.name = name; }, {
+      form: dom.profileForm, success: () => showToast(t("profileUpdated"))
+    });
   });
-
   dom.addQuickActionButton.addEventListener("click", startQuickActionAdd);
-
   dom.quickActionForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    const presetId = dom.quickActionIdInput.value;
-    const existingPreset = state.activityPresets.find((item) => item.id === presetId);
+    if (!canMutate() || !dom.quickActionForm.checkValidity()) return;
+    const id = dom.quickActionIdInput.value;
     const label = dom.quickActionLabelInput.value.trim();
     const starChange = Number(dom.quickActionStarsInput.value);
-
-    if (!label || !Number.isFinite(starChange)) {
-      return;
-    }
-
-    const preset = existingPreset || {
-      id: createId("preset")
+    if (!label || !Number.isFinite(starChange)) return;
+    const fields = {
+      label, defaultStarChange: Math.round(starChange), icon: dom.quickActionIconInput.value,
+      category: dom.quickActionCategoryInput.value, visibleToKid: dom.quickActionVisibleInput.checked
     };
-
-    preset.label = label;
-    preset.defaultStarChange = Math.round(starChange);
-    preset.icon = dom.quickActionIconInput.value;
-    preset.category = dom.quickActionCategoryInput.value;
-    preset.visibleToKid = dom.quickActionVisibleInput.checked;
-
-    if (!existingPreset) {
-      state.activityPresets.push(preset);
-    }
-
-    clearQuickActionForm();
-    saveState();
-    render();
-    showToast(t(existingPreset ? "actionSaved" : "actionAdded"));
+    void mutateGarden((next) => {
+      const preset = next.activityPresets.find((item) => item.id === id);
+      if (id && !preset) { showToast(t("actionUnavailable"), "warning"); return false; }
+      if (preset) Object.assign(preset, fields);
+      else next.activityPresets.push({ id: createId("preset"), ...fields });
+    }, { form: dom.quickActionForm, success: () => {
+      clearQuickActionForm();
+      showToast(t(id ? "actionSaved" : "actionAdded"));
+    } });
   });
-
   dom.cancelQuickActionEditButton.addEventListener("click", clearQuickActionForm);
-
   dom.removeQuickActionButton.addEventListener("click", () => {
     const preset = state.activityPresets.find((item) => item.id === dom.quickActionIdInput.value);
-    if (preset) {
-      removeQuickAction(preset);
-    }
+    if (preset) void removeQuickAction(preset);
   });
-
-  dom.eventStarsInput.addEventListener("input", () => {
-    customEventStarsEdited = true;
-  });
-
-  dom.eventCategoryInput.addEventListener("change", () => {
-    applyCustomEventCategoryDefaults();
-  });
-
+  dom.eventStarsInput.addEventListener("input", () => { customEventStarsEdited = true; });
+  dom.eventCategoryInput.addEventListener("change", () => applyCustomEventCategoryDefaults());
   dom.customEventForm.addEventListener("submit", (event) => {
     event.preventDefault();
+    if (!canMutate() || !dom.customEventForm.checkValidity()) return;
     const label = dom.eventLabelInput.value.trim();
     const starChange = Number(dom.eventStarsInput.value);
+    if (!label || !Number.isFinite(starChange)) return;
     const category = dom.eventCategoryInput.value;
-
-    if (!label || !Number.isFinite(starChange)) {
-      return;
-    }
-
-    addEvent({
-      label,
-      starChange,
-      category,
-      note: dom.eventNoteInput.value,
-      visibleToKid: dom.eventVisibleInput.checked,
-      icon: customEventCategoryDefaults(category).icon,
-      feedbackMessage: t("customEventAdded")
-    });
-
-    dom.eventLabelInput.value = "";
-    dom.eventCategoryInput.value = "earning";
-    dom.eventNoteInput.value = "";
-    customEventStarsEdited = false;
-    applyCustomEventCategoryDefaults({ forceStars: true });
+    void addEvent({
+      label, starChange, category, note: dom.eventNoteInput.value, visibleToKid: dom.eventVisibleInput.checked,
+      icon: customEventCategoryDefaults(category).icon, feedbackMessage: t("customEventAdded")
+    }, { form: dom.customEventForm });
   });
-
   dom.rewardForm.addEventListener("submit", (event) => {
     event.preventDefault();
+    if (!canMutate() || !dom.rewardForm.checkValidity()) return;
     const label = dom.rewardLabelInput.value.trim();
     const cost = clampStars(dom.rewardCostInput.value);
     const icon = dom.rewardIconInput.value;
-
-    if (!label || cost < 1) {
-      return;
-    }
-
-    const rewardId = dom.rewardIdInput.value;
-    const existingReward = state.rewards.find((reward) => reward.id === rewardId);
-
-    if (existingReward) {
-      existingReward.label = label;
-      existingReward.cost = cost;
-      existingReward.icon = icon;
-    } else {
-      const reward = {
-        id: createId("reward"),
-        label,
-        cost,
-        icon,
-        active: true,
-        redeemedAt: null
-      };
-      state.rewards.push(reward);
-      state.child.activeRewardId = reward.id;
-    }
-
-    clearRewardForm();
-    saveState();
-    render();
-    showToast(t("rewardSaved"));
+    if (!label || cost < 1) return;
+    const id = dom.rewardIdInput.value;
+    void mutateGarden((next) => {
+      const reward = next.rewards.find((item) => item.id === id);
+      if (id && !reward) { showToast(t("rewardUnavailable"), "warning"); return false; }
+      if (reward) Object.assign(reward, { label, cost, icon });
+      else {
+        const reward = { id: createId("reward"), label, cost, icon, active: true, redeemedAt: null };
+        next.rewards.push(reward);
+        next.child.activeRewardId = reward.id;
+      }
+    }, { form: dom.rewardForm, success: () => { clearRewardForm(); showToast(t("rewardSaved")); } });
   });
-
   dom.cancelRewardEditButton.addEventListener("click", clearRewardForm);
-
   dom.historyPageSizeSelect.addEventListener("change", () => {
-    const pageSize = Number(dom.historyPageSizeSelect.value);
-    state.settings.historyPageSize = [20, 50, 200].includes(pageSize) ? pageSize : 20;
+    if (!canUseParentTools()) return;
+    const size = Number(dom.historyPageSizeSelect.value);
+    state.settings.historyPageSize = [20, 50, 200].includes(size) ? size : 20;
     historyPage = 1;
-    saveState();
+    savePreferences();
     render();
   });
-
   dom.historyPrevButton.addEventListener("click", () => {
+    if (!canUseParentTools()) return;
     historyPage = Math.max(1, historyPage - 1);
     renderHistory();
   });
-
   dom.historyNextButton.addEventListener("click", () => {
-    const totalPages = Math.max(1, Math.ceil(state.events.length / state.settings.historyPageSize));
-    historyPage = Math.min(totalPages, historyPage + 1);
+    if (!canUseParentTools()) return;
+    const total = Math.max(1, Math.ceil(state.events.length / state.settings.historyPageSize));
+    historyPage = Math.min(total, historyPage + 1);
     renderHistory();
   });
-
-  dom.resetDataButton.addEventListener("click", () => {
-    const confirmed = window.confirm(t("resetConfirm"));
-    if (!confirmed) {
-      return;
-    }
-
-    const language = currentLanguage();
-    state = cloneDefaultState();
-    state.settings.language = language;
-    historyPage = 1;
-    customEventStarsEdited = false;
-    parentUnlocked = false;
-    saveState();
-    render();
-    setView("kid");
-    showToast(t("starGardenReset"));
+  dom.uploadPhotoButton.addEventListener("click", () => {
+    if (!canMutate()) return;
+    if (photoDraft) void savePhotoDraft();
+    else dom.avatarFileInput.click();
   });
+  dom.avatarFileInput.addEventListener("change", () => { void uploadPhoto(dom.avatarFileInput.files?.[0]); });
+  dom.removePhotoButton.addEventListener("click", () => { void chooseAnimal(state.child.avatar); });
 }
 
 function registerServiceWorker() {
@@ -1487,6 +1857,24 @@ function registerServiceWorker() {
   });
 }
 
+gardenSession.addEventListener("change", (event) => {
+  const settings = state.settings;
+  state = gardenSession.garden ? { ...structuredClone(gardenSession.garden.document), settings } : { ...cloneDefaultState(), settings };
+  if (event.detail.reason === "accountChanged") {
+    pendingSuccess = null;
+    photoBusy = false;
+    mutationInProgress = false;
+    lastRestoredResult = null;
+    lockParent();
+    if (avatarURL) URL.revokeObjectURL(avatarURL);
+    avatarURL = null;
+    avatarPath = null;
+  }
+  restorePendingDraft();
+  render();
+  void loadAvatar();
+});
 wireEvents();
 render();
 registerServiceWorker();
+void gardenSession.start();

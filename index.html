@@ -43,7 +43,10 @@
       <div id="appToast" class="app-toast" role="status" aria-live="polite"></div>
 
       <main>
-        <section id="kidView" class="view is-active" aria-labelledby="kidTitle">
+        <section id="kidView" class="view is-active" aria-label="Kid" data-i18n-aria-label="kidTab">
+          <p id="kidAccountMessage" class="empty-state account-message" role="status" data-i18n="askParentSignIn">Ask a parent to sign in to your family garden.</p>
+          <div id="kidGardenContent" hidden>
+          <p id="kidSyncStatus" class="account-status" role="status" aria-live="polite"></p>
           <div class="kid-hero">
             <div class="animal-card" aria-live="polite">
               <div id="kidAvatar" class="animal-avatar" aria-hidden="true">🦁</div>
@@ -75,12 +78,11 @@
             <h2 id="todayTitle" data-i18n="todayStarsTitle">Today's Stars</h2>
             <div id="kidTodayList" class="kid-today-list"></div>
           </section>
+          </div>
         </section>
 
-        <section id="parentView" class="view" aria-labelledby="parentTitle">
+        <section id="parentView" class="view" aria-label="Parent Tools" data-i18n-aria-label="parentToolsTitle">
           <div id="pinGate" class="pin-card">
-            <h1 id="parentTitle" data-i18n="parentToolsTitle">Parent Tools</h1>
-            <p data-i18n="pinHelp">This PIN is a simple child gate, not real security.</p>
             <form id="pinForm" class="pin-form">
               <label for="pinInput" data-i18n="parentPinLabel">Parent PIN</label>
               <div class="inline-form">
@@ -92,10 +94,41 @@
           </div>
 
           <div id="parentTools" class="parent-tools" hidden>
-            <section class="panel compact-panel" aria-labelledby="profileTitle">
+            <section class="panel compact-panel account-panel" aria-labelledby="accountTitle">
+              <div class="panel-heading">
+                <h2 id="accountTitle" data-i18n="accountTitle">Family account</h2>
+                <button id="lockParentButton" class="ghost-button" type="button" data-i18n="lockButton">Lock</button>
+              </div>
+              <form id="accountForm" class="stacked-form">
+                <label for="accountEmailInput" data-i18n="emailLabel">Email</label>
+                <input id="accountEmailInput" name="email" type="email" autocomplete="username" value="coflier320@gmail.com" required>
+                <label for="accountPasswordInput" data-i18n="passwordLabel">Star Garden password</label>
+                <input id="accountPasswordInput" name="password" type="password" autocomplete="current-password" required>
+                <button id="signInButton" class="primary-button" type="submit" data-i18n="signIn">Sign in</button>
+              </form>
+              <div id="accountDetails" class="account-details" hidden>
+                <span id="accountEmail"></span>
+                <button id="signOutButton" class="ghost-button" type="button" data-i18n="signOut">Sign out on this device</button>
+              </div>
+              <p id="accountError" class="form-error" role="alert"></p>
+              <p id="accountStatus" class="account-status" role="status" aria-live="polite"></p>
+              <div class="account-actions">
+                <button id="retrySaveButton" class="secondary-button" type="button" hidden data-i18n="retrySave">Retry save</button>
+                <button id="discardSaveButton" class="ghost-button" type="button" hidden data-i18n="discardSave">Discard draft</button>
+              </div>
+              <div id="setupGarden" class="setup-garden" hidden>
+                <p data-i18n="accountSetupHelp">Set up your family garden by importing this device's garden or starting with the defaults.</p>
+                <div class="account-actions">
+                  <button id="importGardenButton" class="primary-button" type="button" data-i18n="importGarden">Import this device's garden</button>
+                  <button id="freshGardenButton" class="secondary-button" type="button" data-i18n="freshGarden">Start with defaults</button>
+                </div>
+              </div>
+            </section>
+
+            <div id="gardenTools" class="garden-tools" hidden>
+            <section class="panel profile-panel" aria-labelledby="profileTitle">
               <div class="panel-heading">
                 <h2 id="profileTitle" data-i18n="profileTitle">Profile</h2>
-                <button id="lockParentButton" class="ghost-button" type="button" data-i18n="lockButton">Lock</button>
               </div>
               <form id="profileForm" class="profile-form">
                 <label for="childNameInput" data-i18n="childNameLabel">Child name</label>
@@ -106,18 +139,32 @@
                 <fieldset class="avatar-fieldset">
                   <legend data-i18n="avatarLegend">Avatar</legend>
                   <div id="avatarChoices" class="avatar-choices"></div>
+                  <div class="avatar-upload">
+                    <img id="avatarPreview" class="avatar-preview" alt="Avatar preview" data-i18n-alt="avatarPreview" hidden>
+                    <input id="avatarFileInput" name="avatarPhoto" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+                    <div class="account-actions">
+                      <button id="uploadPhotoButton" class="secondary-button" type="button" data-i18n="uploadPhoto">Upload Photo</button>
+                      <button id="removePhotoButton" class="ghost-button" type="button" hidden data-i18n="removePhoto">Remove Photo</button>
+                    </div>
+                    <p class="field-help" data-i18n="photoHelp">JPEG, PNG, or WebP, up to 5 MB.</p>
+                    <p id="avatarUploadError" class="form-error" role="status"></p>
+                  </div>
                 </fieldset>
               </form>
             </section>
 
             <section class="panel" aria-labelledby="quickActionsTitle">
               <div class="panel-heading">
-                <h2 id="quickActionsTitle" data-i18n="quickActionsTitle">Quick Actions</h2>
+                <div class="disclosure-heading">
+                  <h2 id="quickActionsTitle" data-i18n="quickActionsTitle">Quick Actions</h2>
+                  <button class="section-toggle" type="button" data-section-toggle="quickActions" aria-expanded="false" aria-controls="quickActionsBody" aria-label="Expand Quick Actions">+</button>
+                </div>
                 <div class="quick-action-tools">
                   <button id="addQuickActionButton" class="secondary-button" type="button" data-i18n="addQuickActionButton">Add Action</button>
                   <span id="parentBalance" class="balance-pill">10 stars</span>
                 </div>
               </div>
+              <div id="quickActionsBody" class="section-body" hidden>
               <div class="action-groups">
                 <div>
                   <h3 data-i18n="earnStarsTitle">Earn Stars</h3>
@@ -174,10 +221,17 @@
                 </div>
                 <button id="removeQuickActionButton" class="danger-button full-button" type="button" hidden data-i18n="removeActionButton">Remove</button>
               </form>
+              </div>
             </section>
 
-            <section class="panel" aria-labelledby="customEventTitle">
-              <h2 id="customEventTitle" data-i18n="customEventTitle">Custom Event</h2>
+            <section class="panel wide-panel" aria-labelledby="customEventTitle">
+              <div class="panel-heading">
+                <div class="disclosure-heading">
+                  <h2 id="customEventTitle" data-i18n="customEventTitle">Custom Event</h2>
+                  <button class="section-toggle" type="button" data-section-toggle="customEvent" aria-expanded="false" aria-controls="customEventBody" aria-label="Expand Custom Event">+</button>
+                </div>
+              </div>
+              <div id="customEventBody" class="section-body" hidden>
               <form id="customEventForm" class="stacked-form">
                 <label for="eventLabelInput" data-i18n="eventLabelLabel">Label</label>
                 <input id="eventLabelInput" name="label" type="text" maxlength="40" placeholder="Shared nicely" data-i18n-placeholder="eventLabelPlaceholder">
@@ -204,14 +258,19 @@
 
                 <button class="primary-button full-button" type="submit" data-i18n="addEventButton">Add Event</button>
               </form>
+              </div>
             </section>
 
-            <section class="panel" aria-labelledby="rewardsTitle">
+            <section class="panel wide-panel" aria-labelledby="rewardsTitle">
               <div class="panel-heading">
-                <h2 id="rewardsTitle" data-i18n="rewardsTitle">Rewards</h2>
+                <div class="disclosure-heading">
+                  <h2 id="rewardsTitle" data-i18n="rewardsTitle">Rewards</h2>
+                  <button class="section-toggle" type="button" data-section-toggle="rewards" aria-expanded="false" aria-controls="rewardsBody" aria-label="Expand Rewards">+</button>
+                </div>
                 <span id="activeRewardBadge" class="balance-pill">Active reward</span>
               </div>
 
+              <div id="rewardsBody" class="section-body" hidden>
               <form id="rewardForm" class="reward-form">
                 <input id="rewardIdInput" name="rewardId" type="hidden">
                 <label for="rewardLabelInput" data-i18n="rewardLabel">Reward</label>
@@ -240,11 +299,17 @@
               </form>
 
               <div id="rewardList" class="reward-list"></div>
+              </div>
             </section>
 
-            <section class="panel" aria-labelledby="historyTitle">
+            <section class="panel wide-panel" aria-labelledby="historyTitle">
               <div class="panel-heading">
-                <h2 id="historyTitle" data-i18n="historyTitle">History</h2>
+                <div class="disclosure-heading">
+                  <h2 id="historyTitle" data-i18n="historyTitle">History</h2>
+                  <button class="section-toggle" type="button" data-section-toggle="history" aria-expanded="false" aria-controls="historyBody" aria-label="Expand History">+</button>
+                </div>
+              </div>
+              <div id="historyBody" class="section-body" hidden>
                 <div class="history-tools">
                   <label class="history-page-size" for="historyPageSizeSelect">
                     <span data-i18n="historyPerPageLabel">Show</span>
@@ -254,21 +319,26 @@
                       <option value="200">200</option>
                     </select>
                   </label>
-                  <button id="resetDataButton" class="danger-button" type="button" data-i18n="resetButton">Reset</button>
                 </div>
-              </div>
               <div id="historyList" class="history-list"></div>
               <div id="historyPagination" class="history-pagination" hidden>
                 <button id="historyPrevButton" class="small-button" type="button" data-i18n="previousButton">Previous</button>
                 <span id="historyPageIndicator" class="history-page-indicator">Page 1 of 1</span>
                 <button id="historyNextButton" class="small-button" type="button" data-i18n="nextButton">Next</button>
               </div>
+              </div>
             </section>
+            </div>
           </div>
         </section>
       </main>
     </div>
 
+    <script src="config.js"></script>
+    <script src="vendor/supabase.js"></script>
+    <script src="storage.js"></script>
+    <script src="garden-session.js"></script>
+    <script src="ui-translations.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
