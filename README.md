@@ -30,7 +30,7 @@ Visit `http://127.0.0.1:8000`. Empty configuration shows setup guidance and keep
 
 For GitHub Pages, select **GitHub Actions** as the Pages source. Add repository Actions **variables** named `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` with the public values from step 4. The existing Pages workflow runs the browser and database checks before deploying. It builds an explicit public-file allowlist, excluding tests, migrations, dependencies, and prompts. The deploy step safely writes the two variables into the generated site's `config.js`; it does not modify your tracked local configuration. Push to `main`, or run the workflow manually.
 
-The Supabase browser SDK is pinned at version 2.115.0 and vendored under `vendor/`, so the app shell does not depend on a CDN. Whenever changing application assets, increment the cache version in `service-worker.js`. This release upgrades the old v10 shell to v11, installs the corrected lock styles, and preserves account-owned photo caches. The service worker caches only allowlisted application assets. Public `config.js` refreshes from the network when available, so completing owner setup does not require a code release.
+The Supabase browser SDK is pinned at version 2.115.0 and vendored under `vendor/`, so the app shell does not depend on a CDN. Whenever changing application assets, increment the cache version in `service-worker.js`. This release upgrades the old v11 shell to v12, adds device-local Classic and Modern appearances, and preserves account-owned photo caches. The service worker caches only allowlisted application assets. Public `config.js` refreshes from the network when available, so completing owner setup does not require a code release.
 
 ## Synchronization and offline behavior
 

@@ -92,6 +92,12 @@ textarea:focus-visible {
   flex: 0 0 auto;
 }
 
+.preference-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -101,13 +107,14 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 
-.language-control {
+.language-control,
+.appearance-control {
   display: block;
 }
 
-.language-control select {
+.language-control select,
+.appearance-control select {
   width: auto;
-  min-width: 72px;
   min-height: 46px;
   padding: 8px 28px 8px 10px;
   border-color: rgba(61, 140, 90, 0.18);
@@ -116,6 +123,14 @@ textarea:focus-visible {
   color: var(--leaf-dark);
   font-size: 0.84rem;
   font-weight: 900;
+}
+
+.language-control select {
+  min-width: 72px;
+}
+
+.appearance-control select {
+  min-width: 104px;
 }
 
 .app-toast {
@@ -1098,6 +1113,21 @@ textarea {
   }
 }
 
+@media (max-width: 680px) {
+  .topbar {
+    flex-wrap: wrap;
+  }
+
+  .topbar-controls {
+    width: 100%;
+  }
+
+  .view-tabs {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+}
+
 @media (max-width: 430px) {
   .app-shell {
     padding-inline: 10px;
@@ -1108,6 +1138,10 @@ textarea {
   }
 
   .topbar-controls {
+    gap: 6px;
+  }
+
+  .preference-controls {
     gap: 6px;
   }
 
@@ -1124,10 +1158,19 @@ textarea {
     font-size: 0.82rem;
   }
 
-  .language-control select {
+  .language-control select,
+  .appearance-control select {
     min-width: 64px;
     padding-inline: 8px 20px;
     font-size: 0.78rem;
+  }
+
+  .appearance-control select {
+    width: 104px;
+  }
+
+  .language-control select {
+    width: 76px;
   }
 
   .inline-form,
@@ -1176,5 +1219,460 @@ textarea {
   .today-delta {
     grid-column: 2;
     justify-self: start;
+  }
+}
+
+/* Modern appearance ------------------------------------------------------- */
+
+html[data-appearance="modern"] {
+  --leaf: #2f7d5a;
+  --leaf-dark: #174b38;
+  --grass: #7bc96f;
+  --sky: #dff4ee;
+  --sun: #ffc857;
+  --berry: #dc655f;
+  --ink: #183129;
+  --muted: #60736b;
+  --panel: #ffffff;
+  --cream: #fff9e8;
+  --line: rgba(30, 91, 67, 0.14);
+  --shadow: 0 24px 70px rgba(30, 76, 59, 0.12), 0 3px 12px rgba(30, 76, 59, 0.06);
+  background:
+    radial-gradient(circle at 12% 2%, rgba(255, 211, 101, 0.34), transparent 24rem),
+    radial-gradient(circle at 88% 20%, rgba(113, 196, 176, 0.24), transparent 28rem),
+    linear-gradient(155deg, #eefaf6 0%, #f8f9e9 55%, #fff6e6 100%);
+}
+
+html[data-appearance="modern"] body {
+  position: relative;
+  overflow-x: hidden;
+  line-height: 1.45;
+}
+
+html[data-appearance="modern"] body::before,
+html[data-appearance="modern"] body::after {
+  position: fixed;
+  z-index: 0;
+  width: 22rem;
+  height: 22rem;
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+  filter: blur(2px);
+}
+
+html[data-appearance="modern"] body::before {
+  top: 12rem;
+  left: -14rem;
+  background: rgba(120, 203, 136, 0.13);
+}
+
+html[data-appearance="modern"] body::after {
+  right: -13rem;
+  bottom: -5rem;
+  background: rgba(255, 200, 87, 0.14);
+}
+
+html[data-appearance="modern"] .app-shell {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 1080px);
+  padding-inline: clamp(12px, 3vw, 30px);
+  padding-bottom: 42px;
+}
+
+html[data-appearance="modern"] .topbar {
+  top: 10px;
+  margin: 10px 0 24px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 24px;
+  background: rgba(250, 255, 252, 0.76);
+  box-shadow: 0 12px 40px rgba(35, 87, 67, 0.1);
+  backdrop-filter: blur(22px) saturate(145%);
+}
+
+html[data-appearance="modern"] .brand-button {
+  gap: 12px;
+}
+
+html[data-appearance="modern"] .brand-mark {
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: linear-gradient(145deg, #ffdc73, #ffb93e);
+  color: #6d4500;
+  font-size: 25px;
+  box-shadow: 0 10px 24px rgba(197, 130, 26, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+html[data-appearance="modern"] .brand-name {
+  font-size: 1.12rem;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+
+html[data-appearance="modern"] .brand-subtitle {
+  margin-top: 1px;
+  color: #677a72;
+  font-weight: 650;
+}
+
+html[data-appearance="modern"] .view-tabs {
+  gap: 3px;
+  padding: 4px;
+  border-color: rgba(32, 95, 70, 0.12);
+  background: rgba(232, 244, 237, 0.78);
+  box-shadow: inset 0 1px 4px rgba(30, 77, 59, 0.06);
+}
+
+html[data-appearance="modern"] .tab-button {
+  transition: color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+html[data-appearance="modern"] .tab-button.is-active {
+  background: linear-gradient(145deg, #378b65, #286e50);
+  box-shadow: 0 7px 18px rgba(39, 111, 80, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+html[data-appearance="modern"] .language-control select,
+html[data-appearance="modern"] .appearance-control select {
+  border: 1px solid rgba(32, 95, 70, 0.11);
+  background-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 14px rgba(30, 77, 59, 0.06);
+}
+
+html[data-appearance="modern"] .app-toast {
+  top: 92px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #2f7d5a, #246647);
+  box-shadow: 0 14px 36px rgba(25, 80, 58, 0.2);
+}
+
+html[data-appearance="modern"] .animal-card,
+html[data-appearance="modern"] .progress-panel,
+html[data-appearance="modern"] .kid-rewards,
+html[data-appearance="modern"] .kid-summary,
+html[data-appearance="modern"] .pin-card,
+html[data-appearance="modern"] .panel {
+  border-color: rgba(255, 255, 255, 0.78);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.79);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+
+html[data-appearance="modern"] .animal-card {
+  min-height: 360px;
+  padding: 34px 22px 28px;
+  background:
+    radial-gradient(circle at 50% 16%, rgba(255, 223, 127, 0.32), transparent 9rem),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.94), rgba(240, 251, 240, 0.82));
+}
+
+html[data-appearance="modern"] .animal-card::before {
+  inset: auto -24px 0;
+  height: 112px;
+  background:
+    radial-gradient(circle at 12% 100%, #65b96f 0 42px, transparent 43px),
+    radial-gradient(circle at 36% 106%, #8bd178 0 50px, transparent 51px),
+    radial-gradient(circle at 67% 102%, #5bab69 0 43px, transparent 44px),
+    radial-gradient(circle at 91% 105%, #80ca73 0 48px, transparent 49px),
+    linear-gradient(180deg, transparent 0 48px, #91d378 49px);
+  opacity: 0.96;
+}
+
+html[data-appearance="modern"] .animal-card::after {
+  position: absolute;
+  top: 24px;
+  right: 26px;
+  color: rgba(230, 166, 40, 0.58);
+  content: "✦";
+  font-size: 2rem;
+  text-shadow: -38px 34px 0 rgba(92, 177, 131, 0.33), -82px -3px 0 rgba(255, 196, 77, 0.25);
+}
+
+html[data-appearance="modern"] .animal-avatar {
+  width: clamp(136px, 38vw, 202px);
+  height: clamp(136px, 38vw, 202px);
+  border: 9px solid rgba(255, 250, 224, 0.92);
+  background: linear-gradient(145deg, #fffbed, #ffedaf);
+  box-shadow: 0 24px 50px rgba(39, 105, 74, 0.17), 0 0 0 1px rgba(219, 166, 48, 0.12), inset 0 -16px 24px rgba(255, 202, 76, 0.18);
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+html[data-appearance="modern"] .kid-greeting {
+  margin-top: 4px;
+  font-size: 1.08rem;
+  letter-spacing: 0.01em;
+}
+
+html[data-appearance="modern"] .animal-card h1 {
+  margin-block: 6px;
+  color: #173f31;
+  font-size: clamp(3.35rem, 16vw, 6.2rem);
+  letter-spacing: -0.065em;
+  text-shadow: 0 3px 0 rgba(255, 255, 255, 0.7);
+}
+
+html[data-appearance="modern"] .reward-line {
+  color: #315843;
+  font-weight: 750;
+}
+
+html[data-appearance="modern"] .progress-panel,
+html[data-appearance="modern"] .kid-rewards,
+html[data-appearance="modern"] .kid-summary,
+html[data-appearance="modern"] .pin-card,
+html[data-appearance="modern"] .panel {
+  padding: clamp(18px, 3vw, 24px);
+}
+
+html[data-appearance="modern"] .progress-panel {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(249, 252, 232, 0.8));
+}
+
+html[data-appearance="modern"] .progress-track {
+  height: 20px;
+  margin-block: 13px 20px;
+  border: 0;
+  background: rgba(61, 129, 88, 0.11);
+  box-shadow: inset 0 2px 5px rgba(27, 78, 57, 0.1);
+}
+
+html[data-appearance="modern"] .progress-fill {
+  background: linear-gradient(90deg, #58b779, #a2d66f 68%, #ffd05e);
+  box-shadow: 0 3px 12px rgba(70, 154, 94, 0.24);
+}
+
+html[data-appearance="modern"] .garden-plot {
+  gap: 9px;
+}
+
+html[data-appearance="modern"] .garden-cell {
+  min-height: 44px;
+  border: 1px solid rgba(57, 126, 85, 0.08);
+  border-radius: 13px;
+  background: rgba(226, 242, 224, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  transition: transform 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+
+html[data-appearance="modern"] .garden-cell.is-grown {
+  background: linear-gradient(145deg, #fff7ce, #ffe58d);
+  box-shadow: 0 6px 14px rgba(207, 155, 46, 0.14), inset 0 1px 0 #fffdf1;
+  transform: translateY(-3px) rotate(-1deg);
+}
+
+html[data-appearance="modern"] .celebration {
+  border-radius: 18px;
+}
+
+html[data-appearance="modern"] .celebration.is-visible {
+  border: 1px solid rgba(223, 166, 38, 0.25);
+  background: linear-gradient(135deg, #fff9d9, #ffefb0);
+  box-shadow: 0 10px 24px rgba(178, 125, 26, 0.12);
+}
+
+html[data-appearance="modern"] .kid-rewards h2,
+html[data-appearance="modern"] .kid-summary h2,
+html[data-appearance="modern"] .panel h2,
+html[data-appearance="modern"] .pin-card h1 {
+  color: #193e31;
+  font-size: 1.32rem;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+
+html[data-appearance="modern"] .kid-reward-list,
+html[data-appearance="modern"] .kid-today-list,
+html[data-appearance="modern"] .history-list,
+html[data-appearance="modern"] .reward-list {
+  gap: 12px;
+}
+
+html[data-appearance="modern"] .kid-reward-card,
+html[data-appearance="modern"] .today-item,
+html[data-appearance="modern"] .history-item,
+html[data-appearance="modern"] .reward-item,
+html[data-appearance="modern"] .action-button {
+  border-color: rgba(33, 99, 73, 0.11);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 6px 20px rgba(32, 82, 62, 0.055);
+}
+
+html[data-appearance="modern"] .kid-reward-card.is-ready {
+  border-color: rgba(55, 139, 101, 0.28);
+  background: linear-gradient(135deg, #f6fff2, #edfae7);
+}
+
+html[data-appearance="modern"] .kid-reward-icon,
+html[data-appearance="modern"] .reward-icon {
+  border-radius: 14px;
+  background: linear-gradient(145deg, #fff6cf, #ffe49a);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+html[data-appearance="modern"] .today-icon,
+html[data-appearance="modern"] .action-icon {
+  background: linear-gradient(145deg, #eff9eb, #dcf0dc);
+}
+
+html[data-appearance="modern"] .today-delta,
+html[data-appearance="modern"] .history-delta,
+html[data-appearance="modern"] .balance-pill {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+html[data-appearance="modern"] input,
+html[data-appearance="modern"] select,
+html[data-appearance="modern"] textarea {
+  border-color: rgba(36, 96, 72, 0.16);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: inset 0 1px 2px rgba(35, 82, 64, 0.045);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+html[data-appearance="modern"] input:focus,
+html[data-appearance="modern"] select:focus,
+html[data-appearance="modern"] textarea:focus {
+  border-color: rgba(47, 125, 90, 0.48);
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(47, 125, 90, 0.09);
+}
+
+html[data-appearance="modern"] .primary-button,
+html[data-appearance="modern"] .secondary-button,
+html[data-appearance="modern"] .ghost-button,
+html[data-appearance="modern"] .danger-button,
+html[data-appearance="modern"] .action-button,
+html[data-appearance="modern"] .small-button,
+html[data-appearance="modern"] .kid-redeem-button,
+html[data-appearance="modern"] .section-toggle {
+  border-radius: 13px;
+  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+html[data-appearance="modern"] .primary-button,
+html[data-appearance="modern"] .kid-redeem-button,
+html[data-appearance="modern"] .small-button.primary-small {
+  background: linear-gradient(145deg, #378b65, #286e50);
+  box-shadow: 0 8px 18px rgba(41, 111, 80, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+html[data-appearance="modern"] .secondary-button,
+html[data-appearance="modern"] .section-toggle {
+  border-color: rgba(47, 125, 90, 0.16);
+  background: linear-gradient(145deg, #eef9eb, #e2f2df);
+}
+
+html[data-appearance="modern"] .ghost-button,
+html[data-appearance="modern"] .small-button {
+  background: rgba(255, 255, 255, 0.76);
+}
+
+html[data-appearance="modern"] .section-toggle {
+  border-radius: 50%;
+}
+
+html[data-appearance="modern"] .avatar-choice {
+  border-radius: 15px;
+  background: rgba(255, 249, 224, 0.72);
+  transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+html[data-appearance="modern"] .avatar-choice.is-selected {
+  background: linear-gradient(145deg, #edf9e9, #dff1dc);
+  box-shadow: 0 7px 16px rgba(43, 111, 79, 0.1);
+}
+
+html[data-appearance="modern"] .avatar-preview {
+  border-color: rgba(47, 125, 90, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 10px 24px rgba(31, 86, 64, 0.1);
+}
+
+html[data-appearance="modern"] .empty-state {
+  border-color: rgba(47, 125, 90, 0.2);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+html[data-appearance="modern"] .compact-panel {
+  margin-top: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html[data-appearance="modern"] .primary-button:hover,
+  html[data-appearance="modern"] .secondary-button:hover,
+  html[data-appearance="modern"] .ghost-button:hover,
+  html[data-appearance="modern"] .danger-button:hover,
+  html[data-appearance="modern"] .small-button:hover,
+  html[data-appearance="modern"] .kid-redeem-button:hover,
+  html[data-appearance="modern"] .section-toggle:hover,
+  html[data-appearance="modern"] .avatar-choice:hover,
+  html[data-appearance="modern"] .action-button:hover {
+    box-shadow: 0 10px 22px rgba(34, 91, 67, 0.13);
+    transform: translateY(-2px);
+  }
+
+  html[data-appearance="modern"] .animal-card:hover .animal-avatar {
+    transform: translateY(-3px) rotate(1deg);
+  }
+}
+
+@media (max-width: 680px) {
+  html[data-appearance="modern"] .topbar {
+    border-radius: 20px;
+  }
+
+  html[data-appearance="modern"] .app-toast {
+    top: 142px;
+  }
+}
+
+@media (max-width: 430px) {
+  html[data-appearance="modern"] .topbar {
+    margin-top: 6px;
+    margin-bottom: 18px;
+    padding: 9px;
+  }
+
+  html[data-appearance="modern"] .animal-card,
+  html[data-appearance="modern"] .progress-panel,
+  html[data-appearance="modern"] .kid-rewards,
+  html[data-appearance="modern"] .kid-summary,
+  html[data-appearance="modern"] .pin-card,
+  html[data-appearance="modern"] .panel {
+    border-radius: 21px;
+  }
+
+  html[data-appearance="modern"] .animal-card {
+    min-height: 330px;
+    padding-inline: 16px;
+  }
+
+  html[data-appearance="modern"] .garden-plot {
+    gap: 5px;
+  }
+
+  html[data-appearance="modern"] .garden-cell {
+    min-height: 38px;
+    border-radius: 10px;
+    font-size: 1.15rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-appearance="modern"] *,
+  html[data-appearance="modern"] *::before,
+  html[data-appearance="modern"] *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

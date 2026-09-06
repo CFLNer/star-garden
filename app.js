@@ -1,6 +1,8 @@
 const STORAGE_KEY = "star-garden-v1";
 const PARENT_PIN = "1234";
 const SUPPORTED_LANGUAGES = ["en", "zh-CN"];
+const SUPPORTED_APPEARANCES = ["modern", "classic"];
+const APPEARANCE_THEME_COLORS = { modern: "#2f6b50", classic: "#7ac36a" };
 
 const TRANSLATIONS = {
   en: {
@@ -10,6 +12,9 @@ const TRANSLATIONS = {
     kidTab: "Kid",
     parentTab: "Parent",
     languageLabel: "Display language",
+    appearanceLabel: "Visual style",
+    modernAppearance: "Modern",
+    classicAppearance: "Classic",
     helloPrefix: "Hello",
     stars: "stars",
     star: "star",
@@ -129,6 +134,9 @@ const TRANSLATIONS = {
     kidTab: "孩子",
     parentTab: "家长",
     languageLabel: "显示语言",
+    appearanceLabel: "视觉样式",
+    modernAppearance: "现代",
+    classicAppearance: "经典",
     helloPrefix: "你好",
     stars: "颗星",
     star: "颗星",
@@ -437,7 +445,8 @@ const DEFAULT_STATE = {
   ],
   settings: {
     language: "en",
-    historyPageSize: 20
+    historyPageSize: 20,
+    appearance: "modern"
   }
 };
 
@@ -466,6 +475,8 @@ let toastTimeout = null;
 
 const dom = {
   appToast: document.querySelector("#appToast"),
+  themeColor: document.querySelector("#themeColor"),
+  appearanceSelect: document.querySelector("#appearanceSelect"),
   languageSelect: document.querySelector("#languageSelect"),
   translatableText: document.querySelectorAll("[data-i18n]"),
   translatablePlaceholders: document.querySelectorAll("[data-i18n-placeholder]"),
@@ -604,7 +615,10 @@ function normalizeState(savedState) {
       language: SUPPORTED_LANGUAGES.includes(savedState.settings?.language)
         ? savedState.settings.language
         : DEFAULT_STATE.settings.language,
-      historyPageSize
+      historyPageSize,
+      appearance: SUPPORTED_APPEARANCES.includes(savedState.settings?.appearance)
+        ? savedState.settings.appearance
+        : DEFAULT_STATE.settings.appearance
     },
     activityPresets: savedState.activityPresets.map((preset) => {
       const defaultPreset = defaultPresetsById.get(preset.id);
@@ -634,7 +648,8 @@ function loadPreferences(fallback = {}) {
   const settings = { ...DEFAULT_STATE.settings, ...fallback, ...saved };
   return {
     language: SUPPORTED_LANGUAGES.includes(settings.language) ? settings.language : "en",
-    historyPageSize: [20, 50, 200].includes(settings.historyPageSize) ? settings.historyPageSize : 20
+    historyPageSize: [20, 50, 200].includes(settings.historyPageSize) ? settings.historyPageSize : 20,
+    appearance: SUPPORTED_APPEARANCES.includes(settings.appearance) ? settings.appearance : "modern"
   };
 }
 
@@ -796,6 +811,15 @@ function currentLanguage() {
   return state.settings.language;
 }
 
+function applyAppearance() {
+  const appearance = SUPPORTED_APPEARANCES.includes(state.settings.appearance)
+    ? state.settings.appearance
+    : "modern";
+  document.documentElement.dataset.appearance = appearance;
+  dom.appearanceSelect.value = appearance;
+  dom.themeColor.content = APPEARANCE_THEME_COLORS[appearance];
+}
+
 function t(key, replacements = {}) {
   const value = TRANSLATIONS[currentLanguage()][key] ?? TRANSLATIONS.en[key] ?? key;
 
@@ -850,6 +874,7 @@ function starUnit(count) {
 function localizePageText() {
   document.documentElement.lang = currentLanguage();
   dom.languageSelect.value = currentLanguage();
+  applyAppearance();
 
   dom.translatableText.forEach((element) => {
     element.textContent = t(element.dataset.i18n);
@@ -1658,6 +1683,13 @@ async function savePhotoDraft() {
 }
 
 function wireEvents() {
+  dom.appearanceSelect.addEventListener("change", () => {
+    state.settings.appearance = SUPPORTED_APPEARANCES.includes(dom.appearanceSelect.value)
+      ? dom.appearanceSelect.value
+      : "modern";
+    savePreferences();
+    render();
+  });
   dom.languageSelect.addEventListener("change", () => {
     state.settings.language = SUPPORTED_LANGUAGES.includes(dom.languageSelect.value) ? dom.languageSelect.value : "en";
     savePreferences();

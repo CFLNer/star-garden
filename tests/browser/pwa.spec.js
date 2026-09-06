@@ -11,21 +11,23 @@ test('shell upgrade removes old shell, keeps account photos, and restores a lock
   });
   await page.goto('/');
   await page.evaluate(async () => {
-    await caches.open('star-garden-v10');
+    await caches.open('star-garden-v11');
     await caches.open('star-garden-photos-test-account');
     await window.__registerServiceWorker('./service-worker.js');
     await navigator.serviceWorker.ready;
   });
-  await expect.poll(() => page.evaluate(async () => (await caches.keys()).includes('star-garden-v11'))).toBe(true);
-  await expect.poll(() => page.evaluate(async () => (await caches.keys()).includes('star-garden-v10'))).toBe(false);
+  await expect.poll(() => page.evaluate(async () => (await caches.keys()).includes('star-garden-v12'))).toBe(true);
+  await expect.poll(() => page.evaluate(async () => (await caches.keys()).includes('star-garden-v11'))).toBe(false);
   expect(await page.evaluate(async () => (await caches.keys()).includes('star-garden-photos-test-account'))).toBe(true);
-  const cachedPaths = await page.evaluate(async () => (await (await caches.open('star-garden-v11')).keys()).map(request => new URL(request.url).pathname));
+  const cachedPaths = await page.evaluate(async () => (await (await caches.open('star-garden-v12')).keys()).map(request => new URL(request.url).pathname));
   expect(cachedPaths).toContain('/vendor/supabase.js');
   expect(cachedPaths).toContain('/garden-session.js');
   expect(cachedPaths.every(path => !path.includes('supabase.co') && !path.includes('storage/v1'))).toBe(true);
   await page.reload();
   await context.setOffline(true);
   await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-appearance', 'modern');
+  await expect(page.locator('#appearanceSelect')).toHaveValue('modern');
   await page.locator('.tab-button[data-view="parent"]').click();
   await expect(page.locator('#pinGate')).toBeVisible();
   await expect(page.locator('#parentTools')).toBeHidden();
