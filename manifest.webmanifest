@@ -4,8 +4,8 @@
   "description": "A kid-friendly star tracker for family habits and rewards.",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#d8f4ff",
-  "theme_color": "#7ac36a",
+  "background_color": "#e6f4ed",
+  "theme_color": "#2f6b50",
   "icons": [
     {
       "src": "icon.svg",

@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-appearance="modern">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#7ac36a">
+    <meta id="themeColor" name="theme-color" content="#2f6b50">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Star Garden">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -11,6 +11,17 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="apple-touch-icon" href="icon.svg">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <script>
+      (() => {
+        let appearance = "modern";
+        try {
+          const saved = JSON.parse(localStorage.getItem("star-garden-preferences") || "{}");
+          if (["modern", "classic"].includes(saved.appearance)) appearance = saved.appearance;
+        } catch (_) { /* Use the modern default when preferences are unavailable. */ }
+        document.documentElement.dataset.appearance = appearance;
+        document.querySelector('meta[name="theme-color"]').content = appearance === "classic" ? "#7ac36a" : "#2f6b50";
+      })();
+    </script>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
@@ -30,13 +41,23 @@
             <button class="tab-button" type="button" data-view="parent" data-i18n="parentTab">Parent</button>
           </nav>
 
-          <label class="language-control" for="languageSelect">
-            <span class="sr-only" data-i18n="languageLabel">Display language</span>
-            <select id="languageSelect" name="language" aria-label="Display language" data-i18n-aria-label="languageLabel">
-              <option value="en">EN</option>
-              <option value="zh-CN">简体中文</option>
-            </select>
-          </label>
+          <div class="preference-controls">
+            <label class="appearance-control" for="appearanceSelect">
+              <span class="sr-only" data-i18n="appearanceLabel">Visual style</span>
+              <select id="appearanceSelect" name="appearance" aria-label="Visual style" data-i18n-aria-label="appearanceLabel">
+                <option value="modern" data-i18n="modernAppearance">Modern</option>
+                <option value="classic" data-i18n="classicAppearance">Classic</option>
+              </select>
+            </label>
+
+            <label class="language-control" for="languageSelect">
+              <span class="sr-only" data-i18n="languageLabel">Display language</span>
+              <select id="languageSelect" name="language" aria-label="Display language" data-i18n-aria-label="languageLabel">
+                <option value="en">EN</option>
+                <option value="zh-CN">简体中文</option>
+              </select>
+            </label>
+          </div>
         </div>
       </header>
 
