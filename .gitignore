@@ -1,5 +1,6 @@
 icon_kaison.jpeg
 prompt.md
+prompt/
 .DS_Store
 
 node_modules/
