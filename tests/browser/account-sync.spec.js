@@ -79,18 +79,23 @@ test('two sessions synchronize profile and quick actions while preserving an old
   await openGarden(other);
   await unlock(page);
   await unlock(other);
+  await page.locator('#editProfileButton').click();
+  await other.locator('#editProfileButton').click();
   await page.locator('#childNameInput').fill('Unsaved name');
   await other.locator('#childNameInput').fill('Cloud name');
   await other.locator('#profileForm button[type="submit"]').click();
   await expect.poll(() => server.garden.document.child.name).toBe('Cloud name');
+  await expect(other.locator('#profileForm')).toBeHidden();
   await expect(page.locator('#childNameInput')).toHaveValue('Unsaved name');
   await page.locator('#profileForm button[type="submit"]').click();
+  await expect(page.locator('#profileForm')).toBeVisible();
   await expect(page.locator('#childNameInput')).toHaveValue('Unsaved name');
   expect(server.garden.document.child.name).toBe('Cloud name');
   await expect(page.locator('#retrySaveButton')).toBeVisible();
   await page.locator('#retrySaveButton').click();
   await page.locator('#profileForm button[type="submit"]').click();
   await expect.poll(() => server.garden.document.child.name).toBe('Unsaved name');
+  await expect(page.locator('#profileSummary')).toBeVisible();
   await other.locator('.tab-button[data-view="kid"]').click();
   await expect(other.locator('#kidName')).toHaveText('Unsaved name');
   await otherContext.close();
@@ -175,6 +180,24 @@ test('an uncertain accepted operation survives reload and retries without duplic
   expect(server.garden.document.child.currentStars).toBe(12);
 });
 
+test('a restored profile draft reopens the profile editor', async ({ context, page }) => {
+  const server = new GardenServer();
+  await server.connect(context);
+  await openGarden(page);
+  await unlock(page);
+  await page.locator('#editProfileButton').click();
+  await page.locator('#childNameInput').fill('Recovered name');
+  server.loseCommitResponse = true;
+  await page.locator('#profileForm button[type="submit"]').click();
+  await expect(page.locator('#retrySaveButton')).toBeVisible();
+
+  await page.reload();
+  await unlock(page);
+  await expect(page.locator('#profileForm')).toBeVisible();
+  await expect(page.locator('#profileSummary')).toBeHidden();
+  await expect(page.locator('#childNameInput')).toHaveValue('Recovered name');
+});
+
 test('new actions, rewards and complete parent history reach another device', async ({ browser, context, page }) => {
   const server = new GardenServer();
   await server.connect(context);
@@ -218,6 +241,7 @@ test('an offline boot restores only the confirmed account cache', async ({ conte
   await expect(page.locator('#kidSyncStatus')).toContainText('Offline');
   await expect(page.locator('[data-action="kid-redeem"]')).toBeDisabled();
   await unlock(page);
+  await page.locator('#editProfileButton').click();
   await expect(page.locator('#profileForm button[type="submit"]')).toBeDisabled();
   await page.locator('#languageSelect').selectOption('zh-CN');
   await expect(page.locator('#quickActionsTitle')).toHaveText('快捷操作');

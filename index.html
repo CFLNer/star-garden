@@ -150,8 +150,13 @@
             <section class="panel profile-panel" aria-labelledby="profileTitle">
               <div class="panel-heading">
                 <h2 id="profileTitle" data-i18n="profileTitle">Profile</h2>
+                <button id="editProfileButton" class="secondary-button" type="button" data-i18n="editButton">Edit</button>
               </div>
-              <form id="profileForm" class="profile-form">
+              <div id="profileSummary" class="profile-summary" aria-live="polite">
+                <div id="profileAvatar" class="profile-avatar" aria-hidden="true">🦁</div>
+                <strong id="profileName">Little Star</strong>
+              </div>
+              <form id="profileForm" class="profile-form" hidden>
                 <label for="childNameInput" data-i18n="childNameLabel">Child name</label>
                 <div class="inline-form">
                   <input id="childNameInput" name="childName" type="text" maxlength="24" autocomplete="off">
@@ -171,6 +176,7 @@
                     <p id="avatarUploadError" class="form-error" role="status"></p>
                   </div>
                 </fieldset>
+                <button id="cancelProfileEditButton" class="ghost-button full-button" type="button" data-i18n="cancelEditButton">Cancel Edit</button>
               </form>
             </section>
 

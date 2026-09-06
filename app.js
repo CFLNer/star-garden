@@ -468,6 +468,7 @@ let photoDraft = null;
 let lastRestoredResult = null;
 const dismissedDraftContexts = new WeakSet();
 let parentUnlocked = false;
+let profileEditing = false;
 let historyPage = 1;
 let customEventStarsEdited = false;
 let celebrationTimeout = null;
@@ -502,8 +503,13 @@ const dom = {
   pinInput: document.querySelector("#pinInput"),
   pinError: document.querySelector("#pinError"),
   lockParentButton: document.querySelector("#lockParentButton"),
+  profileSummary: document.querySelector("#profileSummary"),
+  profileAvatar: document.querySelector("#profileAvatar"),
+  profileName: document.querySelector("#profileName"),
+  editProfileButton: document.querySelector("#editProfileButton"),
   profileForm: document.querySelector("#profileForm"),
   childNameInput: document.querySelector("#childNameInput"),
+  cancelProfileEditButton: document.querySelector("#cancelProfileEditButton"),
   avatarChoices: document.querySelector("#avatarChoices"),
   parentBalance: document.querySelector("#parentBalance"),
   earningActions: document.querySelector("#earningActions"),
@@ -727,6 +733,7 @@ function clearDrafts({ dismissPending = true } = {}) {
 function lockParent({ focus = false } = {}) {
   const wasUnlocked = parentUnlocked;
   parentUnlocked = false;
+  profileEditing = false;
   parentGeneration += 1;
   lastRestoredResult = null;
   expandedSections.clear();
@@ -802,6 +809,7 @@ function renderAvailability() {
   for (const button of [dom.addQuickActionButton, dom.uploadPhotoButton, dom.removePhotoButton, dom.removeQuickActionButton]) {
     button.disabled = !enabled;
   }
+  dom.cancelProfileEditButton.disabled = photoBusy || mutationInProgress;
   dom.gardenTools.querySelectorAll("input, textarea, select").forEach((input) => {
     if (input !== dom.historyPageSizeSelect) input.disabled = gardenSession.busy || photoBusy || mutationInProgress || Boolean(gardenSession.pending);
   });
@@ -1009,6 +1017,7 @@ function render() {
   localizePageText();
   renderKidView();
   renderParentGate();
+  renderParentProfile();
   renderAvatarChoices();
   renderQuickActions();
   renderRewards();
@@ -1145,18 +1154,50 @@ function getAvatarOption(value) {
     AVATARS.find((avatar) => avatar.value === "🦁");
 }
 
-function renderKidAvatar() {
+function renderAvatar(element) {
   const avatar = getAvatarOption(state.child.avatar);
-  dom.kidAvatar.replaceChildren();
-  dom.kidAvatar.classList.toggle("has-photo", Boolean(avatarURL));
+  element.replaceChildren();
+  element.classList.toggle("has-photo", Boolean(avatarURL));
   if (avatarURL) {
     const image = document.createElement("img");
     image.src = avatarURL;
     image.alt = "";
-    dom.kidAvatar.appendChild(image);
+    element.appendChild(image);
   } else {
-    dom.kidAvatar.textContent = avatar.emoji;
+    element.textContent = avatar.emoji;
   }
+}
+
+function renderKidAvatar() {
+  renderAvatar(dom.kidAvatar);
+}
+
+function renderParentProfile() {
+  dom.profileSummary.hidden = profileEditing;
+  dom.profileForm.hidden = !profileEditing;
+  dom.editProfileButton.hidden = profileEditing;
+  dom.profileName.textContent = displayChildName(state.child.name);
+  renderAvatar(dom.profileAvatar);
+  if (!draftRevisions.has(dom.profileForm.id)) dom.childNameInput.value = state.child.name;
+}
+
+function startProfileEdit() {
+  if (!canUseParentTools()) return;
+  profileEditing = true;
+  renderParentProfile();
+  renderAvailability();
+  dom.childNameInput.focus();
+}
+
+function cancelProfileEdit() {
+  if (!canUseParentTools() || photoBusy || mutationInProgress) return;
+  draftRevisions.delete(dom.profileForm.id);
+  dom.childNameInput.value = state.child.name;
+  dom.avatarFileInput.value = "";
+  dom.avatarUploadError.textContent = "";
+  profileEditing = false;
+  render();
+  dom.editProfileButton.focus();
 }
 
 async function loadAvatar() {
@@ -1167,6 +1208,7 @@ async function loadAvatar() {
     avatarURL = null;
     avatarPath = path;
     renderKidAvatar();
+    renderParentProfile();
     renderAccount();
   }
   if (!path || !gardenSession.user) return;
@@ -1177,6 +1219,7 @@ async function loadAvatar() {
     if (avatarURL) URL.revokeObjectURL(avatarURL);
     avatarURL = URL.createObjectURL(blob);
     renderKidAvatar();
+    renderParentProfile();
     renderAccount();
   } catch (_) { /* The animal avatar remains available if the photo is not cached. */ }
 }
@@ -1198,7 +1241,6 @@ async function chooseAnimal(value) {
 function renderParentGate() {
   dom.pinGate.hidden = parentUnlocked;
   dom.parentTools.hidden = !parentUnlocked;
-  if (!draftRevisions.has(dom.profileForm.id)) dom.childNameInput.value = state.child.name;
   dom.parentBalance.textContent = t("balanceStars", { count: state.child.currentStars });
 }
 
@@ -1562,7 +1604,9 @@ function restorePendingDraft() {
       }
     }
     draftRevisions.set(form.id, context.revision);
-    if (form === dom.quickActionForm) {
+    if (form === dom.profileForm) {
+      profileEditing = true;
+    } else if (form === dom.quickActionForm) {
       dom.quickActionForm.hidden = false;
       dom.removeQuickActionButton.hidden = !dom.quickActionIdInput.value;
       setSection("quickActions", true);
@@ -1722,6 +1766,8 @@ function wireEvents() {
     render();
   });
   dom.lockParentButton.addEventListener("click", () => lockParent({ focus: true }));
+  dom.editProfileButton.addEventListener("click", startProfileEdit);
+  dom.cancelProfileEditButton.addEventListener("click", cancelProfileEdit);
 
   dom.accountForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1787,7 +1833,12 @@ function wireEvents() {
     event.preventDefault();
     const name = dom.childNameInput.value.trim().slice(0, 24) || "Little Star";
     void mutateGarden((next) => { next.child.name = name; }, {
-      form: dom.profileForm, success: () => showToast(t("profileUpdated"))
+      form: dom.profileForm, success: () => {
+        profileEditing = false;
+        showToast(t("profileUpdated"));
+        render();
+        dom.editProfileButton.focus();
+      }
     });
   });
   dom.addQuickActionButton.addEventListener("click", startQuickActionAdd);

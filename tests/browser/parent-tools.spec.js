@@ -51,6 +51,54 @@ test('leaving, explicit Lock, and reload clear unlock, drafts and expansion', as
   await expect(page.locator('#parentTools')).toBeHidden();
 });
 
+test('profile stays concise until edited and cancel restores saved values', async ({ page }) => {
+  await openGarden(page);
+  await unlock(page);
+  await expect(page.locator('#profileSummary')).toBeVisible();
+  await expect(page.locator('#profileName')).toHaveText('Little Star');
+  await expect(page.locator('#profileAvatar')).toHaveText('🦁');
+  await expect(page.locator('#profileForm')).toBeHidden();
+  await expect(page.getByText('Child name', { exact: true })).toBeHidden();
+  await expect(page.getByText('Avatar', { exact: true })).toBeHidden();
+
+  await page.locator('#editProfileButton').click();
+  await expect(page.locator('#profileForm')).toBeVisible();
+  await expect(page.locator('#editProfileButton')).toBeHidden();
+  await expect(page.locator('#childNameInput')).toBeFocused();
+  await page.locator('#childNameInput').fill('Unsaved name');
+  await page.locator('#cancelProfileEditButton').click();
+  await expect(page.locator('#profileSummary')).toBeVisible();
+  await expect(page.locator('#profileName')).toHaveText('Little Star');
+  await expect(page.locator('#editProfileButton')).toBeFocused();
+
+  await page.locator('#editProfileButton').click();
+  await page.locator('.avatar-choice').filter({ hasText: 'Panda' }).click();
+  await expect.poll(() => server.garden.document.child.avatar).toBe('🐼');
+  await page.locator('#cancelProfileEditButton').click();
+  await expect(page.locator('#profileAvatar')).toHaveText('🐼');
+
+  await page.locator('#languageSelect').selectOption('zh-CN');
+  await expect(page.locator('#profileTitle')).toHaveText('资料');
+  await expect(page.locator('#editProfileButton')).toHaveText('编辑');
+  await page.locator('#editProfileButton').click();
+  await page.locator('.tab-button[data-view="kid"]').click();
+  await unlock(page);
+  await expect(page.locator('#profileSummary')).toBeVisible();
+  await expect(page.locator('#profileForm')).toBeHidden();
+});
+
+test('successful profile save updates the summary and closes the editor', async ({ page }) => {
+  await openGarden(page);
+  await unlock(page);
+  await page.locator('#editProfileButton').click();
+  await page.locator('#childNameInput').fill('Nova');
+  await page.locator('#profileForm button[type="submit"]').click();
+  await expect.poll(() => server.garden.document.child.name).toBe('Nova');
+  await expect(page.locator('#profileForm')).toBeHidden();
+  await expect(page.locator('#profileName')).toHaveText('Nova');
+  await expect(page.locator('#editProfileButton')).toBeFocused();
+});
+
 test('independent disclosures and quick action editor survive rendering in both languages', async ({ page }) => {
   await openGarden(page);
   await unlock(page);

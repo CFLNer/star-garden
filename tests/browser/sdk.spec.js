@@ -46,6 +46,7 @@ async function signIn(page) {
 test('real SDK signs in, loads and commits the garden, then signs out only this device', async ({ context, page }) => {
   const remote = await configureSDK(context);
   await signIn(page);
+  await page.locator('#editProfileButton').click();
   await page.locator('#childNameInput').fill('SDK garden');
   await page.locator('#profileForm button[type="submit"]').click();
   await expect.poll(() => remote.garden.document.child.name).toBe('SDK garden');
