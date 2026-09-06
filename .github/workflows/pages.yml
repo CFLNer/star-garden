@@ -1,21 +1,46 @@
-name: Deploy GitHub Pages
+name: Check and deploy GitHub Pages
 
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      - run: sudo apt-get update && sudo apt-get install -y postgresql
+      - run: npm run test:database
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
   deploy:
+    if: github.event_name != 'pull_request'
+    needs: checks
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -23,8 +48,37 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: actions/configure-pages@v5
+      - name: Assemble public site
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import shutil
+          public = Path('_site')
+          public.mkdir()
+          files = ['index.html', 'styles.css', 'app.js', 'storage.js',
+                   'garden-session.js', 'ui-translations.js', 'service-worker.js',
+                   'manifest.webmanifest', 'icon.svg', 'config.js']
+          for filename in files:
+              shutil.copy2(filename, public / filename)
+          shutil.copytree('vendor', public / 'vendor')
+          url = os.environ.get('SUPABASE_URL', '').strip()
+          key = os.environ.get('SUPABASE_PUBLISHABLE_KEY', '').strip()
+          if bool(url) != bool(key):
+              raise SystemExit('Set both SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY repository variables.')
+          if key and not key.startswith('sb_publishable_'):
+              raise SystemExit('Use the Supabase publishable key (sb_publishable_), never a secret or service-role key.')
+          if url:
+              config = {'url': url, 'publishableKey': key}
+              (public / 'config.js').write_text('window.STAR_GARDEN_CONFIG = ' + json.dumps(config) + ';\n')
+          (public / '.nojekyll').touch()
+          PY
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: .
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
