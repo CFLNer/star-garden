@@ -17,9 +17,12 @@ begin
   assert result->>'status' = 'exists', 'second device never overwrites initialization';
   assert result->'garden'->'document'->'child'->>'currentStars' = '3', 'cloud data takes precedence';
 
+  doc := doc || '{"growingStars":[{"id":"growing-1","label":"Dress","progress":1,"targetSteps":2,"status":"active"}],"activityPresets":[{"id":"dress","label":"Dress","mode":"growing","targetSteps":2}]}'::jsonb;
   doc := jsonb_set(doc, '{child,currentStars}', '8');
   result := public.commit_garden(1, '10000000-0000-4000-8000-000000000001', doc);
   assert result->>'status' = 'saved', 'first matching save succeeds';
+  assert result->'garden'->'document'->'growingStars' = doc->'growingStars', 'growing trackers survive save';
+  assert result->'garden'->'document'->'activityPresets' = doc->'activityPresets', 'growing templates survive save';
   assert result->'garden'->>'revision' = '2', 'save advances revision';
   result := public.commit_garden(1, '10000000-0000-4000-8000-000000000001', doc);
   assert result->>'status' = 'duplicate', 'retry returns accepted receipt';

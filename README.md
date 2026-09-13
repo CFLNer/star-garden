@@ -2,7 +2,7 @@
 
 Star Garden is a static, installable family habit and reward tracker. Parents sign into one shared family account to synchronize the child profile, stars, actions, rewards, complete history, and avatar across devices. The frontend remains plain JavaScript and can be hosted on GitHub Pages.
 
-The Parent tab always starts locked. Enter `1234` to open the account controls and parent tools; this PIN is a child gate, separate from the account password. Quick Actions, Custom Event, Rewards, and History open independently. Children can redeem affordable rewards directly in Kid view while signed in and online. English and Simplified Chinese are available.
+The Parent tab always starts locked. Enter `1234` to open the account controls and parent tools; this PIN is a child gate, separate from the account password. Quick Actions, Custom Event, Growing Stars, Rewards, and History open independently. Children can redeem affordable rewards directly in Kid view while signed in and online. English and Simplified Chinese are available.
 
 ## Owner setup
 
@@ -30,7 +30,7 @@ Visit `http://127.0.0.1:8000`. Empty configuration shows setup guidance and keep
 
 For GitHub Pages, select **GitHub Actions** as the Pages source. Add repository Actions **variables** named `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` with the public values from step 4. The existing Pages workflow runs the browser and database checks before deploying. It builds an explicit public-file allowlist, excluding tests, migrations, dependencies, and prompts. The deploy step safely writes the two variables into the generated site's `config.js`; it does not modify your tracked local configuration. Push to `main`, or run the workflow manually.
 
-The Supabase browser SDK is pinned at version 2.115.0 and vendored under `vendor/`, so the app shell does not depend on a CDN. Whenever changing application assets, increment the cache version in `service-worker.js`. This release upgrades the old v11 shell to v12, adds device-local Classic and Modern appearances, and preserves account-owned photo caches. The service worker caches only allowlisted application assets. Public `config.js` refreshes from the network when available, so completing owner setup does not require a code release.
+The Supabase browser SDK is pinned at version 2.115.0 and vendored under `vendor/`, so the app shell does not depend on a CDN. Whenever changing application assets, increment the cache version in `service-worker.js`. This release upgrades previous shells to v13, adds device-local Classic and Modern appearances, and preserves account-owned photo caches. The service worker caches only allowlisted application assets. Public `config.js` refreshes from the network when available, so completing owner setup does not require a code release.
 
 ## Synchronization and offline behavior
 
@@ -60,3 +60,13 @@ PG_BIN=/path/to/postgresql/bin npm run test:database
 ```
 
 After provisioning a real project, perform a live smoke check on two independent devices: sign into both, add a star event, upload a photo, redeem a reward, and confirm both devices converge; sign out of one and confirm the other remains signed in. Database tests validate the SQL against PostgreSQL, while this smoke check verifies the hosted Auth, Realtime, and Storage configuration.
+
+## Growing Stars
+
+Choose Growing Star in Quick Actions or Custom Event and set the steps needed for one star (default 2). Saving a new quick action or submitting a custom event records the first step immediately. Help it grow adds one step; completion earns exactly one star. A target of 1 completes immediately. Progress never expires.
+
+Unfinished activities with the same label (case-sensitive, ignoring surrounding whitespace) share one tracker across both forms. A matching submission adds a step and retains the tracker's original target, note, icon, and visibility. Editing a quick action affects future rounds without adding a step; deleting its template leaves current progress intact. After completion or cancellation, the next use begins a fresh round.
+
+The Growing Stars panel provides Help it grow, Undo step (down to zero), and Cancel. Completed and canceled rounds remain in History; use an existing balance correction for a mistakenly awarded star. Children can view visible progress but only unlocked parents can change it. Private notes stay in Parent view. All changes require a connection and confirmed saves.
+
+Refresh the app on every family device before using Growing Stars. Older clients can strip new quick-action fields when saving. No database migration is required.

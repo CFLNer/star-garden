@@ -16,10 +16,10 @@ test('shell upgrade removes old shell, keeps account photos, and restores a lock
     await window.__registerServiceWorker('./service-worker.js');
     await navigator.serviceWorker.ready;
   });
-  await expect.poll(() => page.evaluate(async () => (await caches.keys()).includes('star-garden-v12'))).toBe(true);
+  await expect.poll(() => page.evaluate(async () => (await caches.keys()).includes('star-garden-v13'))).toBe(true);
   await expect.poll(() => page.evaluate(async () => (await caches.keys()).includes('star-garden-v11'))).toBe(false);
   expect(await page.evaluate(async () => (await caches.keys()).includes('star-garden-photos-test-account'))).toBe(true);
-  const cachedPaths = await page.evaluate(async () => (await (await caches.open('star-garden-v12')).keys()).map(request => new URL(request.url).pathname));
+  const cachedPaths = await page.evaluate(async () => (await (await caches.open('star-garden-v13')).keys()).map(request => new URL(request.url).pathname));
   expect(cachedPaths).toContain('/vendor/supabase.js');
   expect(cachedPaths).toContain('/garden-session.js');
   expect(cachedPaths.every(path => !path.includes('supabase.co') && !path.includes('storage/v1'))).toBe(true);
