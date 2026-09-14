@@ -432,6 +432,7 @@ const DEFAULT_STATE = {
       visibleToKid: true
     }
   ],
+  growingStars: [],
   events: [
     {
       id: "event-start",
@@ -615,6 +616,7 @@ function normalizeState(savedState) {
 
   return {
     ...savedState,
+    growingStars: Array.isArray(savedState.growingStars) ? savedState.growingStars : [],
     settings: {
       ...DEFAULT_STATE.settings,
       ...(savedState.settings || {}),
@@ -630,6 +632,8 @@ function normalizeState(savedState) {
       const defaultPreset = defaultPresetsById.get(preset.id);
       if (!defaultPreset) {
         return {
+          ...preset,
+          mode: preset.mode === "growing" ? "growing" : "immediate",
           id: preset.id || createId("preset"),
           label: preset.label || "Quick action",
           defaultStarChange: Number.isFinite(Number(preset.defaultStarChange)) ? Math.round(Number(preset.defaultStarChange)) : 1,
@@ -642,6 +646,7 @@ function normalizeState(savedState) {
       return {
         ...defaultPreset,
         ...preset,
+        mode: preset.mode === "growing" ? "growing" : "immediate",
         visibleToKid: typeof preset.visibleToKid === "boolean" ? preset.visibleToKid : defaultPreset.visibleToKid
       };
     })
@@ -1021,10 +1026,12 @@ function render() {
   renderAvatarChoices();
   renderQuickActions();
   renderRewards();
+  renderGrowingStars();
   renderHistory();
   renderAccount();
   renderDisclosures();
   renderAvailability();
+  updateGrowingForms();
 }
 
 function renderKidView() {
@@ -1278,6 +1285,158 @@ function renderAvatarChoices() {
   });
 }
 
+function validGrowingTarget(value) {
+  return Number.isSafeInteger(value) && value > 0;
+}
+
+function matchingGrowing(document, label) {
+  return document.growingStars.find((item) => item.status === "active" && item.label.trim() === label.trim());
+}
+
+function growingActionText(preset) {
+  const tracker = matchingGrowing(state, preset.label);
+  return `${t("growButton")} · ${t("growingProgress", { progress: tracker?.progress ?? 0, target: tracker?.targetSteps ?? preset.targetSteps })}`;
+}
+
+function updateGrowingForms() {
+  for (const prefix of ["quickAction", "event"]) {
+    const growing = document.getElementById(prefix + "ModeInput").value === "growing";
+    const target = document.getElementById(prefix + "TargetInput");
+    document.getElementById(prefix + "TargetFields").hidden = !growing;
+    target.required = growing;
+    // Disabled hidden fields must not block form validation.
+    if (!growing) target.disabled = true;
+    else target.disabled = gardenSession.busy || photoBusy || mutationInProgress || Boolean(gardenSession.pending);
+    const stars = document.getElementById(prefix + "StarsInput");
+    stars.parentElement.hidden = growing;
+    stars.disabled = growing || gardenSession.busy || photoBusy || mutationInProgress || Boolean(gardenSession.pending);
+    const category = document.getElementById(prefix + "CategoryInput");
+    if (growing) category.value = "earning";
+    category.querySelectorAll("option").forEach((option) => { option.disabled = growing && option.value !== "earning"; });
+    const help = document.getElementById(prefix + "GrowingHelp");
+    help.hidden = !growing;
+    const editing = prefix === "quickAction" && Boolean(dom.quickActionIdInput.value);
+    const match = matchingGrowing(state, document.getElementById(prefix + "LabelInput").value);
+    help.textContent = editing ? t("growingEditHelp") : match
+      ? t("growingMatchHelp", { progress: match.progress, target: match.targetSteps }) : t("growingStartHelp");
+  }
+}
+
+function recordGrowing(document, tracker, action) {
+  tracker.updatedAt = new Date().toISOString();
+  appendEvent(document, {
+    label: tracker.label, starChange: action === "Completed" ? 1 : 0,
+    category: "earning", note: tracker.note, visibleToKid: tracker.visibleToKid, icon: tracker.icon
+  });
+  Object.assign(document.events[0], {
+    growingStarId: tracker.id, growingAction: action, progress: tracker.progress, targetSteps: tracker.targetSteps
+  });
+}
+
+function advanceGrowing(document, options) {
+  let tracker = matchingGrowing(document, options.label);
+  let action = "Advanced";
+  if (!tracker) {
+    if (!validGrowingTarget(options.targetSteps)) return null;
+    tracker = {
+      id: createId("growing"), label: options.label.trim(), targetSteps: options.targetSteps,
+      progress: 0, status: "active", note: (options.note || "").trim(),
+      icon: options.icon || "⭐", visibleToKid: options.visibleToKid !== false,
+      sourceId: options.sourceId || null, createdAt: new Date().toISOString(),
+      completedAt: null, canceledAt: null
+    };
+    document.growingStars.push(tracker);
+    action = "Created";
+  }
+  tracker.progress += 1;
+  if (tracker.progress === tracker.targetSteps) {
+    tracker.status = "completed";
+    tracker.completedAt = new Date().toISOString();
+    action = "Completed";
+  }
+  recordGrowing(document, tracker, action);
+  return { ...tracker, action };
+}
+
+function growingSuccess(tracker) {
+  historyPage = 1;
+  setSection("growingStars", true);
+  showToast(t("growing" + tracker.action));
+  if (tracker.status === "completed") showCelebration(t("greatJob", { icon: tracker.icon, count: 1 }));
+}
+
+async function growStar(options, { form = null } = {}) {
+  let grown;
+  return mutateGarden((next) => {
+    grown = advanceGrowing(next, options);
+    if (!grown) return false;
+  }, { form, success: () => {
+    if (form) {
+      form.reset();
+      customEventStarsEdited = false;
+      applyCustomEventCategoryDefaults({ forceStars: true });
+    }
+    growingSuccess(grown);
+  } });
+}
+
+async function manageGrowing(id, action) {
+  if (!canMutate()) return;
+  const current = state.growingStars.find((item) => item.id === id && item.status === "active");
+  if (!current) return;
+  if (action === "Canceled" && !window.confirm(t("cancelGrowingConfirm", { label: current.label }))) return;
+  let changed;
+  await mutateGarden((next) => {
+    const tracker = next.growingStars.find((item) => item.id === id && item.status === "active");
+    if (!tracker || (action === "Undone" && tracker.progress === 0)) return false;
+    if (action === "Advanced") changed = advanceGrowing(next, tracker);
+    else {
+      if (action === "Undone") tracker.progress -= 1;
+      else { tracker.status = "canceled"; tracker.canceledAt = new Date().toISOString(); }
+      recordGrowing(next, tracker, action);
+      changed = { ...tracker, action };
+    }
+  }, { success: () => growingSuccess(changed) });
+}
+
+function renderGrowingStars() {
+  const active = state.growingStars.filter((item) => item.status === "active");
+  for (const [id, kid] of [["growingStarsList", false], ["kidGrowingList", true]]) {
+    const container = document.getElementById(id);
+    container.replaceChildren();
+    const items = active.filter((item) => !kid || item.visibleToKid);
+    if (kid) document.getElementById("kidGrowingSection").hidden = items.length === 0;
+    if (!kid && !items.length) container.appendChild(emptyState(t("growingEmpty")));
+    items.forEach((tracker) => {
+      const card = document.createElement("article");
+      card.className = "growing-card";
+      card.dataset.trackerId = tracker.id;
+      const progress = t("growingProgress", { progress: tracker.progress, target: tracker.targetSteps });
+      card.innerHTML = `<strong><span aria-hidden="true">🌱</span> ${escapeHtml(tracker.label)}</strong>
+        <span>${escapeHtml(progress)} · ${t("growingEarns")}</span>
+        <progress max="${tracker.targetSteps}" value="${tracker.progress}" aria-label="${escapeHtml(tracker.label + ': ' + progress)}"></progress>`;
+      if (!kid) {
+        if (tracker.note) { const note = document.createElement("p"); note.textContent = tracker.note; card.appendChild(note); }
+        const controls = document.createElement("div");
+        controls.className = "growing-controls";
+        for (const [action, key] of [["Advanced", "growButton"], ["Undone", "undoStep"], ["Canceled", "cancelGrowing"]]) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = action === "Advanced" ? "secondary-button" : "small-button";
+          button.dataset.mutation = "true";
+          button.dataset.unavailable = String(action === "Undone" && tracker.progress === 0);
+          button.textContent = t(key);
+          button.setAttribute("aria-label", `${t(key)}: ${tracker.label}`);
+          button.addEventListener("click", () => { void manageGrowing(tracker.id, action); });
+          controls.appendChild(button);
+        }
+        card.appendChild(controls);
+      }
+      container.appendChild(card);
+    });
+  }
+}
+
 function renderQuickActions() {
   const earning = state.activityPresets.filter((preset) => preset.category === "earning");
   const corrections = state.activityPresets.filter((preset) => preset.category === "correction");
@@ -1285,6 +1444,7 @@ function renderQuickActions() {
   renderActionGroup(dom.earningActions, earning);
   renderActionGroup(dom.correctionActions, corrections);
   updateQuickActionFormTitle();
+  updateGrowingForms();
 }
 
 function renderActionGroup(container, presets) {
@@ -1303,10 +1463,11 @@ function renderActionGroup(container, presets) {
         <span class="action-icon" aria-hidden="true">${escapeHtml(preset.icon)}</span>
         <span>
         <strong>${escapeHtml(presetLabel)}</strong>
-        <span>${t("actionStars", { delta: formatDelta(preset.defaultStarChange) })}</span>
+        <span>${preset.mode === "growing" ? escapeHtml(growingActionText(preset)) : t("actionStars", { delta: formatDelta(preset.defaultStarChange) })}</span>
       </span>
     `;
     button.addEventListener("click", () => {
+      if (preset.mode === "growing") { void growStar({ ...preset, sourceId: preset.id }); return; }
       addEvent({
         label: preset.label,
         starChange: preset.defaultStarChange,
@@ -1334,6 +1495,8 @@ function startQuickActionAdd() {
   if (!canMutate()) return;
   draftRevisions.set(dom.quickActionForm.id, gardenSession.garden.revision);
   setSection("quickActions", true);
+  document.querySelector("#quickActionModeInput").value = "immediate";
+  document.querySelector("#quickActionTargetInput").value = "2";
   dom.quickActionIdInput.value = "";
   dom.quickActionLabelInput.value = "";
   dom.quickActionStarsInput.value = "1";
@@ -1343,6 +1506,7 @@ function startQuickActionAdd() {
   dom.removeQuickActionButton.hidden = true;
   dom.quickActionForm.hidden = false;
   updateQuickActionFormTitle();
+  updateGrowingForms();
   dom.quickActionLabelInput.focus();
 }
 
@@ -1350,6 +1514,8 @@ function startQuickActionEdit(preset) {
   if (!canMutate()) return;
   draftRevisions.set(dom.quickActionForm.id, gardenSession.garden.revision);
   setSection("quickActions", true);
+  document.querySelector("#quickActionModeInput").value = preset.mode || "immediate";
+  document.querySelector("#quickActionTargetInput").value = preset.targetSteps || 2;
   dom.quickActionIdInput.value = preset.id;
   dom.quickActionLabelInput.value = preset.label;
   dom.quickActionStarsInput.value = preset.defaultStarChange;
@@ -1359,6 +1525,7 @@ function startQuickActionEdit(preset) {
   dom.removeQuickActionButton.hidden = false;
   dom.quickActionForm.hidden = false;
   updateQuickActionFormTitle();
+  updateGrowingForms();
   dom.quickActionLabelInput.focus();
 }
 
@@ -1370,6 +1537,8 @@ function updateQuickActionFormTitle() {
 
 function clearQuickActionForm() {
   draftRevisions.delete(dom.quickActionForm.id);
+  document.querySelector("#quickActionModeInput").value = "immediate";
+  document.querySelector("#quickActionTargetInput").value = "2";
   dom.quickActionIdInput.value = "";
   dom.quickActionLabelInput.value = "";
   dom.quickActionStarsInput.value = "";
@@ -1379,6 +1548,7 @@ function clearQuickActionForm() {
   dom.removeQuickActionButton.hidden = true;
   dom.quickActionForm.hidden = true;
   updateQuickActionFormTitle();
+  updateGrowingForms();
 }
 
 async function removeQuickAction(preset) {
@@ -1532,6 +1702,7 @@ function renderHistory() {
         </div>
         <span class="history-delta${deltaClass}">${formatDelta(event.starChange)}</span>
       </div>
+      ${event.growingStarId ? `<p class="growing-history">${escapeHtml(t("growing" + event.growingAction))} · ${escapeHtml(t("growingProgress", { progress: event.progress, target: event.targetSteps }))}</p>` : ""}
       ${event.note ? `<p class="history-note">${escapeHtml(eventNote)}</p>` : ""}
     `;
     dom.historyList.appendChild(item);
@@ -1841,6 +2012,12 @@ function wireEvents() {
       }
     });
   });
+  for (const prefix of ["quickAction", "event"]) {
+    for (const suffix of ["ModeInput", "LabelInput", "TargetInput"]) {
+      document.getElementById(prefix + suffix).addEventListener("input", updateGrowingForms);
+      document.getElementById(prefix + suffix).addEventListener("change", updateGrowingForms);
+    }
+  }
   dom.addQuickActionButton.addEventListener("click", startQuickActionAdd);
   dom.quickActionForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -1849,18 +2026,28 @@ function wireEvents() {
     const label = dom.quickActionLabelInput.value.trim();
     const starChange = Number(dom.quickActionStarsInput.value);
     if (!label || !Number.isFinite(starChange)) return;
+    const mode = document.querySelector("#quickActionModeInput").value;
+    const targetSteps = Number(document.querySelector("#quickActionTargetInput").value);
+    if (mode === "growing" && !validGrowingTarget(targetSteps)) return;
+    let grown = null;
     const fields = {
+      mode, targetSteps: mode === "growing" ? targetSteps : null,
       label, defaultStarChange: Math.round(starChange), icon: dom.quickActionIconInput.value,
-      category: dom.quickActionCategoryInput.value, visibleToKid: dom.quickActionVisibleInput.checked
+      category: mode === "growing" ? "earning" : dom.quickActionCategoryInput.value, visibleToKid: dom.quickActionVisibleInput.checked
     };
     void mutateGarden((next) => {
       const preset = next.activityPresets.find((item) => item.id === id);
       if (id && !preset) { showToast(t("actionUnavailable"), "warning"); return false; }
       if (preset) Object.assign(preset, fields);
-      else next.activityPresets.push({ id: createId("preset"), ...fields });
+      else {
+        const added = { id: createId("preset"), ...fields };
+        next.activityPresets.push(added);
+        if (mode === "growing") grown = advanceGrowing(next, { ...added, sourceId: added.id });
+      }
     }, { form: dom.quickActionForm, success: () => {
       clearQuickActionForm();
-      showToast(t(id ? "actionSaved" : "actionAdded"));
+      if (grown) growingSuccess(grown);
+      else showToast(t(id ? "actionSaved" : "actionAdded"));
     } });
   });
   dom.cancelQuickActionEditButton.addEventListener("click", clearQuickActionForm);
@@ -1877,6 +2064,12 @@ function wireEvents() {
     const starChange = Number(dom.eventStarsInput.value);
     if (!label || !Number.isFinite(starChange)) return;
     const category = dom.eventCategoryInput.value;
+    if (document.querySelector("#eventModeInput").value === "growing") {
+      const targetSteps = Number(document.querySelector("#eventTargetInput").value);
+      if (!validGrowingTarget(targetSteps)) return;
+      void growStar({ label, targetSteps, note: dom.eventNoteInput.value, visibleToKid: dom.eventVisibleInput.checked, icon: "⭐" }, { form: dom.customEventForm });
+      return;
+    }
     void addEvent({
       label, starChange, category, note: dom.eventNoteInput.value, visibleToKid: dom.eventVisibleInput.checked,
       icon: customEventCategoryDefaults(category).icon, feedbackMessage: t("customEventAdded")
@@ -1943,6 +2136,7 @@ function registerServiceWorker() {
 gardenSession.addEventListener("change", (event) => {
   const settings = state.settings;
   state = gardenSession.garden ? { ...structuredClone(gardenSession.garden.document), settings } : { ...cloneDefaultState(), settings };
+  state.growingStars = Array.isArray(state.growingStars) ? state.growingStars : [];
   if (event.detail.reason === "accountChanged") {
     pendingSuccess = null;
     photoBusy = false;

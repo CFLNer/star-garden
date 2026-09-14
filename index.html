@@ -95,6 +95,11 @@
             <div id="kidRewardList" class="kid-reward-list"></div>
           </section>
 
+          <section id="kidGrowingSection" class="kid-summary" hidden aria-labelledby="kidGrowingTitle">
+            <h2 id="kidGrowingTitle" data-i18n="growingStarsTitle">Growing Stars</h2>
+            <div id="kidGrowingList" class="growing-list"></div>
+          </section>
+
           <section class="kid-summary" aria-labelledby="todayTitle">
             <h2 id="todayTitle" data-i18n="todayStarsTitle">Today's Stars</h2>
             <div id="kidTodayList" class="kid-today-list"></div>
@@ -206,6 +211,17 @@
                 <input id="quickActionIdInput" name="quickActionId" type="hidden">
                 <h3 id="quickActionFormTitle">Edit Quick Action</h3>
 
+                <label for="quickActionModeInput" data-i18n="starMode">Star mode</label>
+                <select id="quickActionModeInput" name="mode">
+                  <option value="immediate" data-i18n="immediateStars">Immediate stars</option>
+                  <option value="growing" data-i18n="growingStar">Growing Star</option>
+                </select>
+                <div id="quickActionTargetFields" hidden>
+                  <label for="quickActionTargetInput" data-i18n="growingTarget">Steps to earn 1 star</label>
+                  <input id="quickActionTargetInput" name="targetSteps" type="number" min="1" max="9007199254740991" step="1" value="2">
+                </div>
+                <p id="quickActionGrowingHelp" class="growing-help" role="status" hidden></p>
+
                 <label for="quickActionLabelInput" data-i18n="eventLabelLabel">Label</label>
                 <input id="quickActionLabelInput" name="label" type="text" maxlength="40">
 
@@ -260,6 +276,17 @@
               </div>
               <div id="customEventBody" class="section-body" hidden>
               <form id="customEventForm" class="stacked-form">
+                <label for="eventModeInput" data-i18n="starMode">Star mode</label>
+                <select id="eventModeInput" name="mode">
+                  <option value="immediate" data-i18n="immediateStars">Immediate stars</option>
+                  <option value="growing" data-i18n="growingStar">Growing Star</option>
+                </select>
+                <div id="eventTargetFields" hidden>
+                  <label for="eventTargetInput" data-i18n="growingTarget">Steps to earn 1 star</label>
+                  <input id="eventTargetInput" name="targetSteps" type="number" min="1" max="9007199254740991" step="1" value="2">
+                </div>
+                <p id="eventGrowingHelp" class="growing-help" role="status" hidden></p>
+
                 <label for="eventLabelInput" data-i18n="eventLabelLabel">Label</label>
                 <input id="eventLabelInput" name="label" type="text" maxlength="40" placeholder="Shared nicely" data-i18n-placeholder="eventLabelPlaceholder">
 
@@ -285,6 +312,16 @@
 
                 <button class="primary-button full-button" type="submit" data-i18n="addEventButton">Add Event</button>
               </form>
+              </div>
+            </section>
+
+            <section class="panel wide-panel" aria-labelledby="growingStarsTitle">
+              <div class="panel-heading disclosure-heading">
+                <h2 id="growingStarsTitle" data-i18n="growingStarsTitle">Growing Stars</h2>
+                <button class="section-toggle" type="button" data-section-toggle="growingStars" aria-expanded="false" aria-controls="growingStarsBody">+</button>
+              </div>
+              <div id="growingStarsBody" class="section-body" hidden>
+                <div id="growingStarsList" class="growing-list"></div>
               </div>
             </section>
 
